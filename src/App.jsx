@@ -701,14 +701,15 @@ function InventoryPage({ player, onBuy, onEquip }) {
 // SYNDICATES PAGE
 // ============================================================
 function SyndicatesPage({ player, onCreateSyndicate, onJoinSyndicate, onLeaveSyndicate, onContribute }) {
-  const [syndicates, setSyndicates] = useState(getSyndicates);
+  const [syndicates, setSyndicates] = useState([]);
+  useEffect(()=>{ dbGetSyndicates().then(setSyndicates); },[]);
   const [tab, setTab] = useState("list");
   const [newName, setNewName] = useState("");
   const [newTag, setNewTag] = useState("");
   const [confirm, setConfirm] = useState(null);
   const [contributeAmt, setContributeAmt] = useState("");
 
-  function refresh() { setSyndicates(getSyndicates()); }
+  function refresh() { dbGetSyndicates().then(setSyndicates); }
 
   function create() {
     if (player.level<10) return alert("Need Level 10");
@@ -716,26 +717,26 @@ function SyndicatesPage({ player, onCreateSyndicate, onJoinSyndicate, onLeaveSyn
     if (!newName.trim()) return alert("Enter a name");
     if (syndicates.find(s=>s.name===newName.trim())) return alert("Name taken");
     const s = { name:newName.trim(), tag:(newTag||newName.slice(0,4)).toUpperCase(), leader:player.username, members:[player.username], level:1, xp:0, treasury:0, founded:Date.now() };
-    const updated = [...syndicates, s];
-    saveSyndicates(updated);
-    setSyndicates(updated);
+    await dbSaveSyndicate(s);
+    setSyndicates(ss=>[...ss,s]);
     onCreateSyndicate(s);
     setNewName(""); setNewTag("");
   }
 
   function join(s) {
     if (player.syndicate) return alert("Leave your current syndicate first");
-    setConfirm({ msg:`Join syndicate "${s.name}"?`, action:()=>{
-      const updated = syndicates.map(x=>x.name===s.name?{...x,members:[...x.members,player.username]}:x);
-      saveSyndicates(updated); setSyndicates(updated);
+    setConfirm({ msg:`Join syndicate "${s.name}"?`, action:async()=>{
+      const updated = {...s, members:[...s.members,player.username]};
+      await dbSaveSyndicate(updated);
+      setSyndicates(ss=>ss.map(x=>x.name===s.name?updated:x));
       onJoinSyndicate(s);
     }});
   }
 
   function leave() {
-    setConfirm({ msg:`Leave syndicate "${player.syndicate}"? You'll lose all syndicate progress.`, action:()=>{
-      const updated = syndicates.map(x=>x.name===player.syndicate?{...x,members:x.members.filter(m=>m!==player.username)}:x);
-      saveSyndicates(updated); setSyndicates(updated);
+    setConfirm({ msg:`Leave syndicate "${player.syndicate}"? You'll lose all syndicate progress.`, action:async()=>{
+      const syn = syndicates.find(x=>x.name===player.syndicate);
+      if(syn){ const updated={...syn,members:syn.members.filter(m=>m!==player.username)}; await dbSaveSyndicate(updated); setSyndicates(ss=>ss.map(x=>x.name===player.syndicate?updated:x)); }
       onLeaveSyndicate();
     }});
   }
@@ -743,8 +744,8 @@ function SyndicatesPage({ player, onCreateSyndicate, onJoinSyndicate, onLeaveSyn
   function contribute() {
     const amt = parseInt(contributeAmt);
     if (!amt||amt<100||amt>player.cash) return alert("Enter valid amount (min $100)");
-    const updated = syndicates.map(x=>x.name===player.syndicate?{...x,treasury:x.treasury+amt}:x);
-    saveSyndicates(updated); setSyndicates(updated);
+    const syn = syndicates.find(x=>x.name===player.syndicate);
+    if(syn){ const updated={...syn,treasury:syn.treasury+amt}; await dbSaveSyndicate(updated); setSyndicates(ss=>ss.map(x=>x.name===player.syndicate?updated:x)); }
     onContribute(amt);
     setContributeAmt("");
   }
@@ -1095,19 +1096,21 @@ function AdminPanel({ onLogout }) {
   const [players, setPlayers] = useState([]);
   const [selectedPlayer, setSelectedPlayer] = useState(null);
   const [announce, setAnnounce] = useState("");
-  const [announcements, setAnnouncements] = useState(()=>{ try{return JSON.parse(localStorage.getItem("sd_announcements")||"[]");}catch{return[];} });
+  const [announcements, setAnnouncements] = useState([]);
   const [giveForm, setGiveForm] = useState({ cash:"", itemId:"" });
   const [editForm, setEditForm] = useState({ level:"", cash:"", strength:"", defense:"", dexterity:"", reputation:"" });
-  const [logs, setLogs] = useState(()=>{ try{return JSON.parse(localStorage.getItem("sd_gamelogs")||"[]");}catch{return[];} });
+  const [logs, setLogs] = useState([]);
   const [toast, setToast] = useState(null);
   const [confirm, setConfirm] = useState(null);
   const [search, setSearch] = useState("");
 
   function notify(msg){ setToast(msg); }
 
-  function refresh() {
-    const accs = getAccounts();
-    setPlayers(Object.values(accs).map(a=>a.player));
+  async function refresh() {
+    const ps = await dbGetAllPlayers();
+    setPlayers(ps);
+    const anns = await dbGetAnnouncements();
+    setAnnouncements(anns);
   }
 
   useEffect(()=>{ refresh(); },[]);
@@ -1118,19 +1121,16 @@ function AdminPanel({ onLogout }) {
     setGiveForm({ cash:"", itemId:"" });
   }
 
-  function savePlayer(updated) {
-    const accs = getAccounts();
-    if (accs[updated.username]) { accs[updated.username].player = updated; saveAccounts(accs); }
+  async function savePlayer(updated) {
+    await dbSavePlayer(updated.username, updated);
     setSelectedPlayer(updated);
     setPlayers(ps => ps.map(p=>p.username===updated.username?updated:p));
     notify("✅ Player saved");
   }
 
   function banPlayer(username) {
-    setConfirm({ msg:`Ban & delete player "${username}"? This cannot be undone.`, action:()=>{
-      const accs = getAccounts();
-      delete accs[username];
-      saveAccounts(accs);
+    setConfirm({ msg:`Ban & delete player "${username}"? This cannot be undone.`, action:async()=>{
+      await supabase.from("players").delete().eq("username", username);
       setSelectedPlayer(null);
       refresh();
       notify(`🚫 ${username} banned and deleted`);
@@ -1165,24 +1165,21 @@ function AdminPanel({ onLogout }) {
     notify(`✅ Gave ${ITEMS.find(i=>i.id===giveForm.itemId)?.name} to ${selectedPlayer.name}`);
   }
 
-  function postAnnouncement() {
+  async function postAnnouncement() {
     if (!announce.trim()) return;
-    const msg = { id:Date.now(), text:announce.trim(), time:new Date().toLocaleString(), active:true };
-    const updated = [msg, ...announcements.slice(0,9)];
-    setAnnouncements(updated);
-    localStorage.setItem("sd_announcements", JSON.stringify(updated));
+    await dbPostAnnouncement(announce.trim());
     setAnnounce("");
+    await refresh();
     notify("📢 Announcement posted");
   }
 
-  function deleteAnnouncement(id) {
-    const updated = announcements.filter(a=>a.id!==id);
-    setAnnouncements(updated);
-    localStorage.setItem("sd_announcements", JSON.stringify(updated));
+  async function deleteAnnouncement(id) {
+    await dbDeleteAnnouncement(id);
+    await refresh();
   }
 
   function clearLogs() {
-    setConfirm({ msg:"Clear all game logs?", action:()=>{ setLogs([]); localStorage.removeItem("sd_gamelogs"); notify("🗑 Logs cleared"); }});
+    setConfirm({ msg:"Clear all game logs?", action:()=>{ setLogs([]); notify("🗑 Logs cleared"); }});
   }
 
   const filtered = players.filter(p=>p.username.includes(search.toLowerCase())||p.name.toLowerCase().includes(search.toLowerCase()));
@@ -1392,8 +1389,7 @@ function AnnouncementBanner() {
   const [ann, setAnn] = useState(null);
   const [dismissed, setDismissed] = useState(false);
   useEffect(()=>{
-    const list = JSON.parse(localStorage.getItem("sd_announcements")||"[]");
-    if (list.length>0) setAnn(list[0]);
+    dbGetAnnouncements().then(list=>{ if(list.length>0) setAnn(list[0]); });
   },[]);
   if (!ann||dismissed) return null;
   return (
