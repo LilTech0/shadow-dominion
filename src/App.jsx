@@ -429,11 +429,11 @@ function LeaderboardPage({player}){
 
 // GYM
 const GYMS=[
-  {id:"street",name:"Street Gym",      mult:1.0,cost:10, unlockLevel:1, desc:"Rusted weights in an alley."},
-  {id:"local", name:"Local Gym",       mult:1.2,cost:20, unlockLevel:5, desc:"A proper gym with real equipment."},
-  {id:"pro",   name:"Professional Gym",mult:1.5,cost:50, unlockLevel:15,desc:"Coaches and serious athletes."},
-  {id:"elite", name:"Elite Gym",       mult:2.0,cost:100,unlockLevel:30,desc:"Private trainers, top machines."},
-  {id:"lab",   name:"Underground Lab", mult:3.0,cost:200,unlockLevel:50,desc:"No rules. Maximum gains. Legends only."},
+  {id:"street",name:"Street Gym",      base:5,  mult:1.0,cost:10, unlockLevel:1, desc:"Rusted weights in an alley."},
+  {id:"local", name:"Local Gym",       base:10, mult:1.5,cost:20, unlockLevel:5, desc:"A proper gym with real equipment."},
+  {id:"pro",   name:"Professional Gym",base:20, mult:2.0,cost:50, unlockLevel:15,desc:"Coaches and serious athletes."},
+  {id:"elite", name:"Elite Gym",       base:35, mult:3.0,cost:100,unlockLevel:30,desc:"Private trainers, top machines."},
+  {id:"lab",   name:"Underground Lab", base:50, mult:4.0,cost:200,unlockLevel:50,desc:"No rules. Maximum gains. Legends only."},
 ];
 const TSTATS=[
   {id:"strength", name:"Strength", icon:"💪",desc:"Increases attack power"},
@@ -442,22 +442,43 @@ const TSTATS=[
   {id:"speed",    name:"Speed",    icon:"💨",desc:"Dodge chance in combat"},
   {id:"stamina",  name:"Stamina",  icon:"❤️",desc:"Increases max health"},
 ];
-function gymGain(cur,mult){return parseFloat(Math.max(0.01,(10*mult*(0.95+Math.random()*0.10))/(1+(cur/10000))).toFixed(2));}
+// Shadow Dominion Gym Formula:
+// Gain = (BaseGymValue × √Reputation × GymMultiplier × BonusMultiplier) ÷ (1 + CurrentStat/500000)
+function gymGain(cur, base, mult, reputation, bonuses){
+  const repBonus = Math.sqrt(Math.max(1, reputation));
+  const bonusMult = (bonuses.education||1) * (bonuses.syndicate||1) * (bonuses.property||1) * (bonuses.company||1) * (bonuses.event||1);
+  const raw = (base * repBonus * mult * bonusMult) / (1 + (cur / 500000));
+  return Math.max(1, parseFloat(raw.toFixed(2)));
+}
 
 function GymPage({player,onTrain}){
   const [selGym,setSelGym]=useState("street");
   const [log,setLog]=useState([]);
   const gym=GYMS.find(g=>g.id===selGym);
+  // Bonus multipliers — will expand when education/property/events added
+  const bonuses={education:1,syndicate:player.syndicate?1.15:1,property:1,company:1,event:1};
+  const bonusMult=parseFloat((bonuses.education*bonuses.syndicate*bonuses.property*bonuses.company*bonuses.event).toFixed(3));
+  const repSqrt=parseFloat(Math.sqrt(Math.max(1,player.reputation)).toFixed(2));
+
   function train(statId){
     if(player.energy<gym.cost){setLog(l=>[{txt:"❌ Not enough energy (need "+gym.cost+"⚡)",good:false},...l]);return;}
     const cur=parseFloat(player[statId])||10;
-    const gain=gymGain(cur,gym.mult);
+    const gain=gymGain(cur,gym.base,gym.mult,player.reputation,bonuses);
     const stat=TSTATS.find(s=>s.id===statId);
     onTrain({statId,gain,energyCost:gym.cost});
-    setLog(l=>[{txt:stat.icon+" "+stat.name+" +"+gain+" → "+(cur+gain).toFixed(2)+" ["+gym.name+"]",good:true},...l.slice(0,49)]);
+    setLog(l=>[{txt:stat.icon+" "+stat.name+" +"+gain.toLocaleString()+" → "+(cur+gain).toLocaleString()+" ["+gym.name+"]",good:true},...l.slice(0,49)]);
   }
+
   return(<div>
-    <div style={S.card()}><div style={S.ct}>🏋️ GYM</div><div style={{color:C.muted,fontSize:11}}>Energy: <span style={{color:C.blue}}>{Math.floor(player.energy)}/{MAX_E}</span> · No energy = no training · Gains decrease as stats grow</div></div>
+    <div style={S.card()}>
+      <div style={S.ct}>🏋️ GYM</div>
+      <div style={{color:C.muted,fontSize:11,marginBottom:8}}>Energy: <span style={{color:C.blue}}>{Math.floor(player.energy)}/{MAX_E}</span> · Gains INCREASE with reputation · Higher stats = even bigger gains</div>
+      <div style={{display:"flex",gap:16,flexWrap:"wrap",fontSize:11}}>
+        <span>⭐ REP Bonus: <span style={{color:C.gold,fontWeight:700}}>√{player.reputation} = ×{repSqrt}</span></span>
+        <span>🎯 Bonus Mult: <span style={{color:C.green,fontWeight:700}}>×{bonusMult}</span></span>
+        {player.syndicate&&<span style={{color:C.purple}}>🏴 Syndicate: ×1.15</span>}
+      </div>
+    </div>
     <div style={S.card()}>
       <div style={S.ct}>SELECT GYM</div>
       <div style={{display:"flex",flexDirection:"column",gap:8}}>
@@ -467,25 +488,25 @@ function GymPage({player,onTrain}){
           return(<div key={g.id} onClick={()=>unlocked&&setSelGym(g.id)} style={{padding:"12px",borderRadius:6,border:"1px solid "+(active?C.orange:unlocked?C.border:C.dim),background:active?"#1a0e00":"#0d0d18",cursor:unlocked?"pointer":"not-allowed",opacity:unlocked?1:0.4}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
               <div><div style={{color:active?C.orange:"#fff",fontWeight:700}}>{g.name}{active?" ✓":""}</div><div style={{color:C.muted,fontSize:10,marginTop:2}}>{g.desc}</div></div>
-              <div style={{textAlign:"right"}}><div style={{color:C.gold,fontWeight:900}}>x{g.mult}</div><div style={{color:C.blue,fontSize:10}}>{g.cost}⚡/session</div>{!unlocked&&<span style={S.badge(C.red)}>LVL {g.unlockLevel}</span>}</div>
+              <div style={{textAlign:"right"}}><div style={{color:C.gold,fontWeight:900}}>×{g.mult} · Base {g.base}</div><div style={{color:C.blue,fontSize:10}}>{g.cost}⚡/session</div>{!unlocked&&<span style={S.badge(C.red)}>LVL {g.unlockLevel}</span>}</div>
             </div>
           </div>);
         })}
       </div>
     </div>
     <div style={S.card()}>
-      <div style={S.ct}>TRAIN AT {gym.name.toUpperCase()} <span style={S.badge(C.gold)}>x{gym.mult}</span></div>
+      <div style={S.ct}>TRAIN AT {gym.name.toUpperCase()} <span style={S.badge(C.gold)}>×{gym.mult}</span></div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
         {TSTATS.map(stat=>{
           const cur=parseFloat(player[stat.id])||10;
-          const preview=gymGain(cur,gym.mult);
+          const preview=gymGain(cur,gym.base,gym.mult,player.reputation,bonuses);
           const canT=player.energy>=gym.cost;
           return(<div key={stat.id} style={{background:"#0a0a14",border:"1px solid "+C.border,borderRadius:6,padding:12}}>
             <div style={{color:"#fff",fontWeight:700,fontSize:13,marginBottom:2}}>{stat.icon} {stat.name}</div>
             <div style={{color:C.muted,fontSize:10,marginBottom:6}}>{stat.desc}</div>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-              <span style={{color:C.purple,fontWeight:900,fontSize:15}}>{typeof cur==="number"?cur.toFixed(2):cur}</span>
-              <span style={{color:C.green,fontSize:11}}>~+{preview}</span>
+              <span style={{color:C.purple,fontWeight:900,fontSize:15}}>{(cur||0).toLocaleString()}</span>
+              <span style={{color:C.green,fontSize:11}}>+{preview.toLocaleString()}</span>
             </div>
             <button onClick={()=>train(stat.id)} disabled={!canT} style={{...S.btnF(canT?C.green:C.muted,canT?C.greenBg:"#14141e"),fontSize:10,padding:"7px",opacity:canT?1:0.5,cursor:canT?"pointer":"not-allowed"}}>TRAIN ({gym.cost}⚡)</button>
           </div>);
