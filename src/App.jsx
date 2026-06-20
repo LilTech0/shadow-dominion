@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback, memo } from "react";
 // SUPABASE CONFIG — paste your project URL and anon key here
 // Get them from: Supabase Dashboard → Settings → API
 // ============================================================
-const SUPABASE_URL  = "https://https://mpinckzjyzymwwrbstkk.supabase.co;
+const SUPABASE_URL  = "https://https://mpinckzjyzymwwrbstkk.supabase.co";
 const SUPABASE_ANON = "sb_publishable_Zt0Y6cpESGLpVSMNcM5tdA_Iu9EaMbs";
 
 // Minimal Supabase client (no npm needed in artifact)
