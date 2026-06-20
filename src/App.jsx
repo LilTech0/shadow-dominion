@@ -72,6 +72,20 @@ const S={
 };
 const RC={muted:C.muted,rare:C.blue,legendary:C.gold,common:C.muted};
 
+function RegenBar({label,val,max,color,icon,regenRate}){
+  const pct=Math.min(100,Math.max(0,(val/max)*100));
+  const isFull=Math.floor(val)>=max;
+  return(<div style={{marginBottom:8}}>
+    <div style={{display:"flex",justifyContent:"space-between",marginBottom:3,fontSize:10}}>
+      <span style={{color:C.muted}}>{icon} {label}</span>
+      <div style={{display:"flex",gap:6,alignItems:"center"}}>
+        <span style={{color:C.dim,fontSize:9}}>{isFull?"FULL":"+1 "+regenRate}</span>
+        <span style={{color}}>{Math.floor(val)}/{max}</span>
+      </div>
+    </div>
+    <div style={S.barW}><div style={S.bar(pct,color)}/></div>
+  </div>);
+}
 function Bar({label,val,max,color,icon}){return(<div style={{marginBottom:7}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:3,fontSize:10}}><span style={{color:C.muted}}>{icon} {label}</span><span style={{color}}>{Math.floor(val)}/{max}</span></div><div style={S.barW}><div style={S.bar((val/max)*100,color)}/></div></div>);}
 function Toast({msg,onClose}){useEffect(()=>{const t=setTimeout(onClose,3500);return()=>clearTimeout(t);},[onClose]);const g=msg.startsWith("✅")||msg.startsWith("🆙")||msg.startsWith("🏆")||msg.startsWith("🏴")||msg.startsWith("🎁");return(<div style={{position:"fixed",top:16,right:16,background:g?C.greenBg:C.redBg,border:`1px solid ${g?C.green:C.red}44`,borderRadius:6,padding:"12px 18px",color:g?C.green:C.red,fontSize:12,zIndex:9999,letterSpacing:1,maxWidth:340,lineHeight:1.5}}>{msg}</div>);}
 function Tabs({tabs,active,onSelect}){return(<div style={{display:"flex",gap:6,marginBottom:16}}>{tabs.map(t=>(<button key={t} onClick={()=>onSelect(t)} style={{padding:"7px 18px",background:active===t?C.red:"#14141e",border:`1px solid ${active===t?C.red:C.border}`,borderRadius:4,color:active===t?"#fff":C.muted,cursor:"pointer",fontSize:10,letterSpacing:2,textTransform:"uppercase"}}>{t}</button>))}</div>);}
@@ -620,15 +634,15 @@ function Game({initialPlayer,onLogout}){
           <div style={{color:C.muted,fontSize:10}}>LVL {player.level} · ⭐{player.reputation}</div>
           <div style={{color:C.green,fontSize:12,marginTop:2}}>${player.cash.toLocaleString()}</div>
         </div>
-        <div style={{flex:1,paddingTop:6}}>
-          {NAV.map(n=>(<div key={n.id} style={S.nav(page===n.id)} onClick={()=>setPage(n.id)}><span>{n.icon}</span><span style={{fontSize:10,letterSpacing:1}}>{n.label}</span></div>))}
-        </div>
-        <div style={{padding:"12px 14px",borderTop:`1px solid ${C.border}`}}>
-          <Bar label="ENERGY" val={player.energy} max={MAX_E} color={C.blue} icon="⚡"/>
-          <Bar label="NERVE" val={player.nerve} max={MAX_N} color={C.orange} icon="🧠"/>
-          <Bar label="HEALTH" val={player.health} max={MAX_H} color={C.green} icon="❤️"/>
+        <div style={{padding:"10px 14px",borderBottom:`1px solid ${C.border}`}}>
+          <RegenBar label="ENERGY" val={player.energy} max={MAX_E} color={C.blue} icon="⚡" regenRate="1/5min"/>
+          <RegenBar label="NERVE"  val={player.nerve}  max={MAX_N} color={C.orange} icon="🧠" regenRate="1/10min"/>
+          <RegenBar label="HEALTH" val={player.health} max={MAX_H} color={C.green} icon="❤️" regenRate="1/3min"/>
           {!player.loginRewardClaimed&&<button style={{...S.btnF(C.gold,"#2a1f00"),marginTop:8,fontSize:9}} onClick={()=>setShowDaily(true)}>🎁 CLAIM DAILY</button>}
           <button onClick={onLogout} style={{...S.btnF(C.muted,"#14141e"),marginTop:6,fontSize:9}}>LOGOUT</button>
+        </div>
+        <div style={{flex:1,paddingTop:6}}>
+          {NAV.map(n=>(<div key={n.id} style={S.nav(page===n.id)} onClick={()=>setPage(n.id)}><span>{n.icon}</span><span style={{fontSize:10,letterSpacing:1}}>{n.label}</span></div>))}
         </div>
       </div>
       <div style={{flex:1,width:"70%",padding:20,overflowY:"auto"}}>
@@ -643,6 +657,172 @@ function Game({initialPlayer,onLogout}){
         {page==="inventory"  &&<InventoryPage player={player} onBuy={handleBuy} onEquip={handleEquip}/>}
         {page==="syndicates" &&<SyndicatesPage player={player} onCreate={handleCreate} onJoin={handleJoin} onLeave={handleLeave} onContribute={handleContribute}/>}
         {page==="leaderboard"&&<LeaderboardPage player={player}/>}
+      </div>
+    </div>
+  </div>);
+}
+
+// ADMIN LOGIN
+const ADMIN_USER="admin",ADMIN_PASS="ShadowAdmin@2024";
+function AdminLogin({onLogin}){
+  const [u,setU]=useState(""),[p,setP]=useState(""),[e,setE]=useState("");
+  function login(){if(u===ADMIN_USER&&p===ADMIN_PASS)onLogin();else setE("Invalid credentials.");}
+  return(<div style={S.authWrap}><div style={S.authBox}>
+    <div style={{color:C.orange,fontSize:22,fontWeight:900,letterSpacing:4,textAlign:"center",marginBottom:20}}>⚙️ ADMIN PANEL</div>
+    <input style={S.inp} placeholder="Username" value={u} onChange={e=>setU(e.target.value)}/>
+    <input style={S.inp} type="password" placeholder="Password" value={p} onChange={e=>setP(e.target.value)} onKeyDown={e=>e.key==="Enter"&&login()}/>
+    {e&&<div style={{color:C.red,fontSize:11,marginBottom:10}}>⚠ {e}</div>}
+    <button style={S.btnF(C.orange,"#2a1000")} onClick={login}>ENTER</button>
+    <div style={{marginTop:12,color:C.muted,fontSize:10,textAlign:"center",cursor:"pointer"}} onClick={()=>{window.location.hash="";}}>← Back to game</div>
+  </div></div>);
+}
+
+function AdminPanel({onLogout}){
+  const [tab,setTab]=useState("players");
+  const [players,setPlayers]=useState([]);
+  const [sel,setSel]=useState(null);
+  const [ann,setAnn]=useState("");
+  const [anns,setAnns]=useState([]);
+  const [give,setGive]=useState({cash:"",itemId:""});
+  const [edit,setEdit]=useState({level:"",cash:"",strength:"",defense:"",dexterity:"",reputation:""});
+  const [confirm,setConfirm]=useState(null);
+  const [toast,setToast]=useState(null);
+  const [search,setSearch]=useState("");
+  const [loading,setLoading]=useState(false);
+  const notify=msg=>setToast(msg);
+
+  async function refresh(){
+    setLoading(true);
+    const ps=await dbAllPlayers();setPlayers(ps);
+    const as=await dbGetAnnouncements();setAnns(as);
+    setLoading(false);
+  }
+  useEffect(()=>{refresh();},[]);
+
+  function selectP(p){setSel(p);setEdit({level:p.level,cash:p.cash,strength:p.strength,defense:p.defense,dexterity:p.dexterity,reputation:p.reputation});setGive({cash:"",itemId:""});}
+
+  async function saveP(updated){
+    await dbSavePlayer(updated.username,updated);
+    setSel(updated);setPlayers(ps=>ps.map(p=>p.username===updated.username?updated:p));
+    notify("✅ Player saved");
+  }
+
+  function banP(username){
+    setConfirm({msg:`Ban & delete "${username}"? Cannot be undone.`,action:async()=>{
+      await dbDeletePlayer(username);setSel(null);refresh();notify("🚫 "+username+" banned");
+    }});
+  }
+
+  async function applyEdit(){
+    if(!sel)return;
+    await saveP({...sel,level:Math.max(1,parseInt(edit.level)||sel.level),cash:Math.max(0,parseInt(edit.cash)||sel.cash),strength:Math.max(1,parseInt(edit.strength)||sel.strength),defense:Math.max(1,parseInt(edit.defense)||sel.defense),dexterity:Math.max(1,parseInt(edit.dexterity)||sel.dexterity),reputation:Math.max(0,parseInt(edit.reputation)||sel.reputation)});
+  }
+
+  async function giveCash(){
+    if(!sel)return;
+    const a=parseInt(give.cash);
+    if(!a||a<=0)return notify("❌ Enter valid amount");
+    await saveP({...sel,cash:sel.cash+a});
+    notify("✅ Gave $"+a.toLocaleString()+" to "+sel.name);
+  }
+
+  async function giveItem(){
+    if(!sel||!give.itemId)return;
+    if(sel.inventory.includes(give.itemId))return notify("❌ Already owned");
+    await saveP({...sel,inventory:[...sel.inventory,give.itemId]});
+    notify("✅ Gave "+ITEMS.find(i=>i.id===give.itemId)?.name+" to "+sel.name);
+  }
+
+  async function postAnn(){
+    if(!ann.trim())return;
+    await dbPostAnnouncement(ann.trim());
+    setAnn("");refresh();notify("📢 Announcement posted");
+  }
+
+  const filtered=players.filter(p=>p.username?.includes(search.toLowerCase())||p.name?.toLowerCase().includes(search.toLowerCase()));
+  const totalCash=players.reduce((s,p)=>s+(p.cash||0),0);
+  const totalCrimes=players.reduce((s,p)=>s+(p.crimeStats?.total||0),0);
+
+  return(<div style={{...S.app,background:"#09080a"}}>
+    {toast&&<Toast msg={toast} onClose={()=>setToast(null)}/>}
+    {confirm&&<Confirm msg={confirm.msg} onYes={()=>{confirm.action();setConfirm(null);}} onNo={()=>setConfirm(null)}/>}
+    <div style={{background:"#0f0a00",borderBottom:"1px solid #2a1a00",padding:"12px 20px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+      <span style={{color:C.orange,fontSize:16,fontWeight:900,letterSpacing:3}}>⚙️ ADMIN — SHADOW DOMINION</span>
+      <div style={{display:"flex",gap:8,alignItems:"center"}}>
+        <span style={{color:C.muted,fontSize:10}}>{players.length} players</span>
+        <button style={S.btn(C.muted,"#14141e")} onClick={refresh}>{loading?"...":"↺ REFRESH"}</button>
+        <button style={S.btn(C.muted,"#14141e")} onClick={onLogout}>LOGOUT</button>
+      </div>
+    </div>
+    <div style={{display:"flex",minHeight:"calc(100vh - 49px)"}}>
+      <div style={{...S.sb,borderColor:"#2a1a00"}}>
+        {[["players","👥","PLAYERS"],["give","🎁","GIVE"],["edit","✏️","EDIT"],["announce","📢","ANNOUNCE"]].map(([id,icon,label])=>(<div key={id} style={{...S.nav(tab===id),borderLeftColor:tab===id?C.orange:"transparent",color:tab===id?C.orange:C.muted}} onClick={()=>setTab(id)}><span>{icon}</span><span style={{fontSize:10}}>{label}</span></div>))}
+      </div>
+      <div style={{flex:1,padding:20,overflowY:"auto"}}>
+        <div style={{display:"flex",gap:12,marginBottom:16,flexWrap:"wrap"}}>
+          {[["👥 PLAYERS",players.length,C.blue],["💰 TOTAL CASH","$"+totalCash.toLocaleString(),C.green],["🔪 CRIMES",totalCrimes,C.orange]].map(([l,v,c])=>(<div key={l} style={{background:"#0f0a00",border:"1px solid #2a1a00",borderRadius:6,padding:"10px 16px"}}><div style={{color:c,fontWeight:900,fontSize:16}}>{v}</div><div style={{color:C.muted,fontSize:9}}>{l}</div></div>))}
+        </div>
+
+        {tab==="players"&&<div>
+          <div style={S.card()}>
+            <div style={{...S.ct,color:C.orange}}>👥 ALL PLAYERS</div>
+            <input style={{...S.inp,marginBottom:12}} placeholder="🔍 Search..." value={search} onChange={e=>setSearch(e.target.value)}/>
+            {filtered.length===0&&<div style={{color:C.dim}}>{loading?"Loading...":"No players found."}</div>}
+            {filtered.map(p=>(<div key={p.username} style={{display:"grid",gridTemplateColumns:"1fr 50px 60px 70px 80px",gap:6,padding:"8px 4px",borderBottom:"1px solid "+C.border,background:sel?.username===p.username?"#1a0e00":"transparent",cursor:"pointer"}} onClick={()=>selectP(p)}>
+              <div><div style={{color:"#fff",fontSize:12,fontWeight:700}}>{p.name}</div><div style={{color:C.muted,fontSize:9}}>@{p.username}</div></div>
+              <span style={{color:C.purple,fontWeight:700}}>{p.level}</span>
+              <span style={{color:C.orange}}>{p.reputation}</span>
+              <span style={{color:C.green,fontSize:10}}>${Math.floor((p.cash||0)/1000)}k</span>
+              <button style={{...S.btn(C.red,C.redBg),padding:"3px 8px",fontSize:9}} onClick={e=>{e.stopPropagation();banP(p.username);}}>BAN</button>
+            </div>))}
+          </div>
+          {sel&&<div style={S.card()}>
+            <div style={{...S.ct,color:C.orange}}>📊 {sel.name}</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,fontSize:12}}>
+              {[["Username",sel.username],["Level",sel.level],["Cash","$"+(sel.cash||0).toLocaleString()],["Reputation",sel.reputation],["STR",sel.strength],["DEF",sel.defense],["DEX",sel.dexterity],["Wins",sel.wins],["Losses",sel.losses],["Crimes",sel.crimeStats?.total||0],["Syndicate",sel.syndicate||"None"],["Items",sel.inventory?.length+" items"]].map(([l,v])=>(<div key={l} style={{...S.row,justifyContent:"space-between",background:"#0a0808",padding:"6px 10px",borderRadius:4}}><span style={{color:C.muted,fontSize:10}}>{l}</span><span style={{color:"#fff",fontWeight:700}}>{v}</span></div>))}
+            </div>
+          </div>}
+        </div>}
+
+        {tab==="give"&&<div>
+          {!sel&&<div style={{...S.card(),color:C.muted}}>👈 Select a player from Players tab first.</div>}
+          {sel&&<div style={S.card()}>
+            <div style={{...S.ct,color:C.orange}}>🎁 GIVE TO: {sel.name}</div>
+            <div style={{color:C.muted,fontSize:11,marginBottom:12}}>Cash: <span style={{color:C.green}}>${(sel.cash||0).toLocaleString()}</span></div>
+            <div style={{display:"flex",gap:8,marginBottom:12}}><input style={{...S.inp,marginBottom:0,flex:1}} type="number" placeholder="Cash amount..." value={give.cash} onChange={e=>setGive(g=>({...g,cash:e.target.value}))}/><button style={S.btn(C.green,C.greenBg)} onClick={giveCash}>GIVE CASH</button></div>
+            <div style={{display:"flex",gap:8}}><select style={{...S.inp,marginBottom:0,flex:1}} value={give.itemId} onChange={e=>setGive(g=>({...g,itemId:e.target.value}))}><option value="">Select item...</option>{ITEMS.map(i=><option key={i.id} value={i.id}>{i.name}</option>)}</select><button style={S.btn(C.orange,C.orangeBg)} onClick={giveItem}>GIVE ITEM</button></div>
+          </div>}
+        </div>}
+
+        {tab==="edit"&&<div>
+          {!sel&&<div style={{...S.card(),color:C.muted}}>👈 Select a player from Players tab first.</div>}
+          {sel&&<div style={S.card()}>
+            <div style={{...S.ct,color:C.orange}}>✏️ EDIT: {sel.name}</div>
+            <div style={S.g2}>
+              {[["Level","level"],["Cash","cash"],["Strength","strength"],["Defense","defense"],["Dexterity","dexterity"],["Reputation","reputation"]].map(([label,key])=>(<div key={key}><div style={{color:C.muted,fontSize:10,marginBottom:4}}>{label.toUpperCase()}</div><input style={S.inp} type="number" value={edit[key]} onChange={e=>setEdit(f=>({...f,[key]:e.target.value}))}/></div>))}
+            </div>
+            <button style={S.btnF(C.orange,"#2a1000")} onClick={applyEdit}>SAVE CHANGES</button>
+            <div style={{marginTop:10}}><button style={S.btn(C.red,C.redBg)} onClick={()=>banP(sel.username)}>🚫 BAN PLAYER</button></div>
+          </div>}
+        </div>}
+
+        {tab==="announce"&&<div>
+          <div style={S.card()}>
+            <div style={{...S.ct,color:C.orange}}>📢 BROADCAST</div>
+            <textarea style={{...S.inp,height:80,resize:"vertical",marginBottom:10}} placeholder="Message..." value={ann} onChange={e=>setAnn(e.target.value)}/>
+            <button style={S.btnF(C.orange,"#2a1000")} onClick={postAnn}>📢 POST</button>
+          </div>
+          <div style={S.card()}>
+            <div style={{...S.ct,color:C.orange}}>📋 ACTIVE</div>
+            {anns.length===0&&<div style={{color:C.dim}}>None.</div>}
+            {anns.map(a=>(<div key={a.id} style={{padding:"10px 0",borderBottom:"1px solid "+C.border}}>
+              <div style={{display:"flex",justifyContent:"space-between"}}>
+                <div><div style={{color:"#fff",fontSize:12}}>{a.text}</div><div style={{color:C.muted,fontSize:10}}>{new Date(a.created_at).toLocaleString()}</div></div>
+                <button style={{...S.btn(C.red,C.redBg),padding:"3px 8px",fontSize:9}} onClick={()=>dbDeleteAnnouncement(a.id).then(refresh)}>DELETE</button>
+              </div>
+            </div>))}
+          </div>
+        </div>}
       </div>
     </div>
   </div>);
