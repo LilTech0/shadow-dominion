@@ -4,8 +4,8 @@ import { useState, useEffect, useRef, useCallback, memo } from "react";
 // SUPABASE CONFIG — paste your project URL and anon key here
 // Get them from: Supabase Dashboard → Settings → API
 // ============================================================
-const SUPABASE_URL  = "https://pjbncrcwuibnekavaypq.supabase.co";
-const SUPABASE_ANON = "sb_publishable_zrB_hyPR5F5deh4q6rs5eA_XTcODF1m";
+const SUPABASE_URL  = "https://wiewmduhgqwzjuehvxju.supabase.co";
+const SUPABASE_ANON = "sb_publishable_Ww9E7-lthX7VPLCC8WdDgQ_5xkLuSRp";
 
 // Minimal Supabase client (no npm needed in artifact)
 function createClient(url, key) {
@@ -148,6 +148,7 @@ const memStore = {
   notifications: {},
   mail: {},
   market: [],
+  events: [],
 };
 
 // ============================================================
@@ -200,7 +201,14 @@ function createPlayer(name, username, userId) {
     syndicate_id:null, syndicate_name:null,
     stat_points:0, wins:0, losses:0,
     in_jail_until: null, in_hospital_until: null,
+    created_at: now, is_admin: false,
   };
+}
+
+function numOrNull(v) {
+  if (v === "" || v === null || v === undefined) return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
 }
 
 function createNPC(playerLevel) {
@@ -410,6 +418,91 @@ const DB = {
       if (payload.new) cb(payload.new);
     });
   },
+
+  // ---- ADMIN ----
+  async adminSearchPlayers(query) {
+    if (DEMO_MODE) {
+      const all = Object.values(memStore.accounts).map(a => a.player);
+      if (!query) return all;
+      const q = query.toLowerCase();
+      return all.filter(p => p.username.toLowerCase().includes(q) || p.name.toLowerCase().includes(q));
+    }
+    const tbl = await supabase.authedFrom("players");
+    const filter = query ? `or=(username.ilike.*${query}*,name.ilike.*${query}*)` : undefined;
+    const { data } = await tbl.select("*", { filter, order: "level.desc", limit: 50 });
+    return data || [];
+  },
+
+  async adminUpdatePlayer(adminId, targetId, patch) {
+    if (DEMO_MODE) {
+      const acc = Object.values(memStore.accounts).find(a => a.player.id === targetId);
+      if (!acc) return { error: "Player not found" };
+      ["cash","level","xp","reputation","stat_points","health","energy","nerve"].forEach(k => {
+        const n = numOrNull(patch[k]);
+        if (n !== null) acc.player[k] = n;
+      });
+      if (patch.clearJail) acc.player.in_jail_until = null;
+      if (patch.clearHospital) acc.player.in_hospital_until = null;
+      return { data: { ...acc.player }, error: null };
+    }
+    const res = await supabase.rpc("admin_update_player", {
+      p_admin_id: adminId, p_target_id: targetId,
+      p_cash: numOrNull(patch.cash), p_level: numOrNull(patch.level), p_xp: numOrNull(patch.xp),
+      p_reputation: numOrNull(patch.reputation), p_stat_points: numOrNull(patch.stat_points),
+      p_health: numOrNull(patch.health), p_energy: numOrNull(patch.energy), p_nerve: numOrNull(patch.nerve),
+      p_clear_jail: !!patch.clearJail, p_clear_hospital: !!patch.clearHospital,
+    });
+    if (res?.error) return { error: res.error };
+    return { data: res?.player, error: null };
+  },
+
+  async adminDeletePlayer(adminId, targetId) {
+    if (DEMO_MODE) {
+      const uname = Object.keys(memStore.accounts).find(u => memStore.accounts[u].player.id === targetId);
+      if (uname) delete memStore.accounts[uname];
+      return { error: null };
+    }
+    const res = await supabase.rpc("admin_delete_player", { p_admin_id: adminId, p_target_id: targetId });
+    return res?.error ? { error: res.error } : { error: null };
+  },
+
+  async adminSetAdmin(adminId, targetUsername, isAdmin) {
+    if (DEMO_MODE) {
+      const acc = memStore.accounts[targetUsername];
+      if (!acc) return { error: "Player not found" };
+      acc.player.is_admin = isAdmin;
+      return { error: null };
+    }
+    const res = await supabase.rpc("admin_set_admin", { p_admin_id: adminId, p_target_username: targetUsername, p_is_admin: isAdmin });
+    return res?.error ? { error: res.error } : { error: null };
+  },
+
+  async getEvents() {
+    if (DEMO_MODE) return memStore.events || [];
+    const tbl = await supabase.authedFrom("events");
+    const { data } = await tbl.select("*", { order: "created_at.desc", limit: 20 });
+    return data || [];
+  },
+
+  async adminPostEvent(adminId, title, body) {
+    if (DEMO_MODE) {
+      const ev = { id: crypto.randomUUID(), title, body, active: true, created_at: new Date().toISOString() };
+      memStore.events.unshift(ev);
+      return { data: ev, error: null };
+    }
+    const res = await supabase.rpc("admin_post_event", { p_admin_id: adminId, p_title: title, p_body: body, p_ends_at: null });
+    if (res?.error) return { error: res.error };
+    return { data: res?.event, error: null };
+  },
+
+  async adminDeleteEvent(adminId, eventId) {
+    if (DEMO_MODE) {
+      memStore.events = memStore.events.filter(e => e.id !== eventId);
+      return { error: null };
+    }
+    const res = await supabase.rpc("admin_delete_event", { p_admin_id: adminId, p_event_id: eventId });
+    return res?.error ? { error: res.error } : { error: null };
+  },
 };
 
 // ============================================================
@@ -441,6 +534,10 @@ const S = {
   val:       { color:C.text, fontSize:13, fontWeight:700 },
   grid:      { display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 },
   logBox:    { background:C.bg, border:`1px solid ${C.border}`, borderRadius:4, padding:10, maxHeight:180, overflowY:"auto", fontSize:11, lineHeight:2 },
+  fieldRow:   { display:"flex", alignItems:"center", gap:10, marginBottom:8 },
+  fieldLabel: { width:84, flexShrink:0, color:C.muted, fontSize:11, letterSpacing:0.5 },
+  fieldValue: { flex:1, background:C.bg, border:`1px solid ${C.border2}`, borderRadius:4, padding:"8px 12px", fontSize:13, color:C.text, minWidth:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" },
+  avatarBox:  { width:96, height:96, flexShrink:0, borderRadius:8, background:`linear-gradient(155deg, ${C.bg3}, ${C.bg})`, border:`1px solid ${C.border2}`, display:"flex", alignItems:"center", justifyContent:"center", position:"relative", overflow:"hidden" },
 };
 
 // ============================================================
@@ -469,6 +566,15 @@ function Toast({ msg, onClose }) {
 }
 
 function Badge({ color, children }) { return <span style={S.badge(color)}>{children}</span>; }
+
+function ProfileField({ label, value, color }) {
+  return (
+    <div style={S.fieldRow}>
+      <span style={S.fieldLabel}>{label}</span>
+      <span style={{ ...S.fieldValue, color: color || C.text }}>{value}</span>
+    </div>
+  );
+}
 
 function StatusBars({ player, compact }) {
   const inJail = player.in_jail_until && new Date(player.in_jail_until) > new Date();
@@ -568,28 +674,43 @@ const ProfilePage = memo(function ProfilePage({ player, onStatUp, onHospital, on
   const xpNeeded = XP_FOR_LEVEL(player.level + 1);
   const wpn = ITEM_MAP[player.equipped_weapon];
   const arm = ITEM_MAP[player.equipped_armor];
+  const ageDays = player.created_at ? Math.max(0, Math.floor((Date.now() - new Date(player.created_at).getTime()) / 86400000)) : 0;
+  const winRate = (player.wins + player.losses) > 0 ? Math.round((player.wins / (player.wins + player.losses)) * 100) : 0;
   return (
     <div>
       <div style={S.card}>
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:16 }}>
-          <div>
-            <div style={{ color:"#fff", fontSize:22, fontWeight:900, letterSpacing:2 }}>{player.name}</div>
-            <div style={{ color:C.muted, fontSize:11 }}>@{player.username}</div>
-            {player.syndicate_name && <div style={{ color:C.purple, fontSize:11, marginTop:4 }}>🏴 {player.syndicate_name}</div>}
+        <div style={S.cardTitle}>YOUR PROFILE</div>
+        <div style={{ display:"flex", gap:16, marginBottom:16, flexWrap:"wrap" }}>
+          <div style={S.avatarBox}>
+            <span style={{ fontSize:34, fontWeight:900, color:C.red, textShadow:`0 0 20px ${C.red}80` }}>
+              {player.name?.[0]?.toUpperCase() || "?"}
+            </span>
+            <div style={{ position:"absolute", bottom:4, right:4, background:C.red2, border:`1px solid ${C.red}`, borderRadius:10, padding:"1px 6px", fontSize:9, color:"#fff", fontWeight:900 }}>
+              {player.level}
+            </div>
           </div>
-          <div style={{ textAlign:"right" }}>
-            <div style={{ color:C.red, fontSize:26, fontWeight:900 }}>LVL {player.level}</div>
-            <Badge color={C.orange}>REP {player.reputation}</Badge>
+          <div style={{ flex:1, minWidth:180 }}>
+            <ProfileField label="NAME"    value={player.name} />
+            <ProfileField label="CARTEL"  value={player.syndicate_name || "None"} color={player.syndicate_name ? C.purple : C.muted} />
+            <ProfileField label="REP."    value={player.reputation.toLocaleString()} color={C.orange} />
+            <ProfileField label="LEVEL"   value={player.level} color={C.red} />
+            <ProfileField label="AGE"     value={`${ageDays} day${ageDays===1?"":"s"} old`} />
           </div>
         </div>
-        <StatBar label="XP"     val={player.xp}    max={xpNeeded}   color={C.purple} />
-        <StatBar label="ENERGY" val={player.energy} max={MAX_ENERGY} color={C.blue} />
-        <StatBar label="NERVE"  val={player.nerve}  max={MAX_NERVE}  color={C.orange} />
-        <StatBar label="HEALTH" val={player.health} max={MAX_HEALTH} color={C.green} />
-        <div style={{ marginTop:12, display:"flex", gap:20, borderTop:`1px solid ${C.border}`, paddingTop:12, flexWrap:"wrap" }}>
-          <div><div style={{ color:C.green,  fontWeight:900, fontSize:18 }}>${player.cash.toLocaleString()}</div><div style={{ color:C.muted, fontSize:10 }}>CASH</div></div>
-          <div><div style={{ color:C.blue,   fontWeight:900, fontSize:18 }}>{player.wins}</div><div style={{ color:C.muted, fontSize:10 }}>WINS</div></div>
-          <div><div style={{ color:"#ff4d4d",fontWeight:900, fontSize:18 }}>{player.losses}</div><div style={{ color:C.muted, fontSize:10 }}>LOSSES</div></div>
+        <div style={{ borderTop:`1px solid ${C.border}`, paddingTop:12, marginBottom:12 }}>
+          <ProfileField label="NETWORTH"   value={`$${player.cash.toLocaleString()}`} color={C.green} />
+          <ProfileField label="XP"         value={`${player.xp.toLocaleString()} / ${xpNeeded.toLocaleString()}`} color={C.purple} />
+          <ProfileField label="STAT PTS"   value={player.stat_points} color={player.stat_points > 0 ? C.green : C.muted} />
+        </div>
+        <div style={{ borderTop:`1px solid ${C.border}`, paddingTop:12 }}>
+          <ProfileField label="WINS"      value={player.wins} color={C.blue} />
+          <ProfileField label="LOSSES"    value={player.losses} color="#ff4d4d" />
+          <ProfileField label="WIN RATE"  value={`${winRate}%`} />
+        </div>
+        <div style={{ borderTop:`1px solid ${C.border}`, marginTop:12, paddingTop:12 }}>
+          <StatBar label="ENERGY" val={player.energy} max={MAX_ENERGY} color={C.blue} />
+          <StatBar label="NERVE"  val={player.nerve}  max={MAX_NERVE}  color={C.orange} />
+          <StatBar label="HEALTH" val={player.health} max={MAX_HEALTH} color={C.green} />
         </div>
       </div>
       <StatusBars player={player} />
@@ -1139,6 +1260,146 @@ function NotifBell({ playerId, onClick, count }) {
 }
 
 // ============================================================
+// ADMIN PAGE
+// ============================================================
+const AdminPage = memo(function AdminPage({ player, notify }) {
+  const [query, setQuery]     = useState("");
+  const [results, setResults] = useState([]);
+  const [editing, setEditing] = useState(null);
+  const [form, setForm]       = useState({});
+  const [events, setEvents]   = useState([]);
+  const [evForm, setEvForm]   = useState({ title:"", body:"" });
+  const [busy, setBusy]       = useState(false);
+
+  useEffect(() => { DB.adminSearchPlayers("").then(setResults); DB.getEvents().then(setEvents); }, []);
+
+  async function search() {
+    setResults(await DB.adminSearchPlayers(query));
+  }
+
+  function startEdit(p) {
+    setEditing(p.id);
+    setForm({ cash:p.cash, level:p.level, xp:p.xp, reputation:p.reputation, stat_points:p.stat_points, health:p.health, energy:p.energy, nerve:p.nerve, clearJail:false, clearHospital:false });
+  }
+
+  async function saveEdit(targetId) {
+    setBusy(true);
+    const { data, error } = await DB.adminUpdatePlayer(player.id, targetId, form);
+    if (error) notify(`❌ ${error}`);
+    else {
+      notify("✅ Player updated");
+      setResults(rs => rs.map(p => p.id === targetId ? { ...p, ...data } : p));
+      setEditing(null);
+    }
+    setBusy(false);
+  }
+
+  async function removePlayer(p) {
+    if (!window.confirm(`Delete ${p.username}? This cannot be undone.`)) return;
+    const { error } = await DB.adminDeletePlayer(player.id, p.id);
+    if (error) notify(`❌ ${error}`);
+    else { notify(`✅ Deleted ${p.username}`); setResults(rs => rs.filter(x => x.id !== p.id)); }
+  }
+
+  async function toggleAdmin(p) {
+    const { error } = await DB.adminSetAdmin(player.id, p.username, !p.is_admin);
+    if (error) notify(`❌ ${error}`);
+    else {
+      notify(`✅ ${p.username} is ${!p.is_admin ? "now" : "no longer"} an admin`);
+      setResults(rs => rs.map(x => x.id === p.id ? { ...x, is_admin: !x.is_admin } : x));
+    }
+  }
+
+  async function postEvent() {
+    if (!evForm.title.trim() || !evForm.body.trim()) { notify("❌ Fill in title & body"); return; }
+    const { data, error } = await DB.adminPostEvent(player.id, evForm.title.trim(), evForm.body.trim());
+    if (error) notify(`❌ ${error}`);
+    else { notify("✅ Announcement posted"); setEvents(e => [data, ...e]); setEvForm({ title:"", body:"" }); }
+  }
+
+  async function removeEvent(ev) {
+    const { error } = await DB.adminDeleteEvent(player.id, ev.id);
+    if (!error) setEvents(e => e.filter(x => x.id !== ev.id));
+    else notify(`❌ ${error}`);
+  }
+
+  const EDIT_FIELDS = ["cash","level","xp","reputation","stat_points","health","energy","nerve"];
+
+  return (
+    <div>
+      <div style={S.card}>
+        <div style={S.cardTitle}>🛡️ PLAYER MANAGEMENT</div>
+        <div style={{ display:"flex", gap:8, marginBottom:12 }}>
+          <input style={{ ...S.input, marginBottom:0, flex:1 }} placeholder="Search username or name..." value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => e.key === "Enter" && search()} />
+          <button style={S.btnOrange} onClick={search}>SEARCH</button>
+        </div>
+        {results.length === 0 && <div style={{ color:"#333" }}>No players found.</div>}
+        {results.map(p => (
+          <div key={p.id} style={{ borderBottom:`1px solid ${C.border}`, padding:"10px 0" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:8 }}>
+              <div>
+                <div style={{ color:C.text, fontWeight:700 }}>
+                  {p.name} <span style={{ color:C.muted, fontWeight:400 }}>@{p.username}</span>{" "}
+                  {p.is_admin && <Badge color={C.purple}>ADMIN</Badge>}
+                </div>
+                <div style={{ color:C.muted, fontSize:11 }}>LVL {p.level} · ${(p.cash||0).toLocaleString()} · REP {p.reputation}</div>
+              </div>
+              <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+                <button style={{ ...S.btnGray, padding:"6px 10px" }} onClick={() => editing === p.id ? setEditing(null) : startEdit(p)}>{editing === p.id ? "CLOSE" : "EDIT"}</button>
+                <button style={{ ...S.btnPurple, padding:"6px 10px" }} onClick={() => toggleAdmin(p)}>{p.is_admin ? "REVOKE" : "MAKE ADMIN"}</button>
+                <button style={{ ...S.btnRed, padding:"6px 10px" }} onClick={() => removePlayer(p)}>DELETE</button>
+              </div>
+            </div>
+            {editing === p.id && (
+              <div style={{ marginTop:10, padding:12, background:C.bg, borderRadius:4 }}>
+                <div style={S.grid}>
+                  {EDIT_FIELDS.map(field => (
+                    <div key={field} style={S.row}>
+                      <span style={{ ...S.label, textTransform:"uppercase" }}>{field.replace("_", " ")}</span>
+                      <input style={{ ...S.input, marginBottom:0, flex:1 }} type="number" value={form[field] ?? ""} onChange={e => setForm(f => ({ ...f, [field]: e.target.value }))} />
+                    </div>
+                  ))}
+                </div>
+                <div style={{ display:"flex", gap:16, marginTop:10, fontSize:12, color:C.muted, flexWrap:"wrap" }}>
+                  <label style={{ display:"flex", gap:6, alignItems:"center" }}>
+                    <input type="checkbox" checked={!!form.clearJail} onChange={e => setForm(f => ({ ...f, clearJail: e.target.checked }))} /> Release from jail
+                  </label>
+                  <label style={{ display:"flex", gap:6, alignItems:"center" }}>
+                    <input type="checkbox" checked={!!form.clearHospital} onChange={e => setForm(f => ({ ...f, clearHospital: e.target.checked }))} /> Discharge from hospital
+                  </label>
+                </div>
+                <button style={{ ...S.btnGreen, marginTop:10 }} onClick={() => saveEdit(p.id)} disabled={busy}>{busy ? "SAVING..." : "SAVE CHANGES"}</button>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <div style={S.card}>
+        <div style={S.cardTitle}>📢 POST ANNOUNCEMENT</div>
+        <input style={S.input} placeholder="Title" value={evForm.title} onChange={e => setEvForm(f => ({ ...f, title: e.target.value }))} />
+        <textarea style={{ ...S.input, height:80, resize:"vertical" }} placeholder="Message..." value={evForm.body} onChange={e => setEvForm(f => ({ ...f, body: e.target.value }))} />
+        <button style={{ ...S.btnRed, padding:"10px 24px" }} onClick={postEvent}>POST</button>
+      </div>
+
+      <div style={S.card}>
+        <div style={S.cardTitle}>📰 ANNOUNCEMENTS</div>
+        {events.length === 0 && <div style={{ color:"#333" }}>No announcements yet.</div>}
+        {events.map(ev => (
+          <div key={ev.id} style={{ padding:"10px 0", borderBottom:`1px solid ${C.border}` }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+              <span style={{ color:C.text, fontWeight:700 }}>{ev.title}</span>
+              <button style={{ ...S.btnGray, padding:"2px 8px", fontSize:10 }} onClick={() => removeEvent(ev)}>REMOVE</button>
+            </div>
+            <div style={{ color:C.muted, fontSize:12, marginTop:4 }}>{ev.body}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+});
+
+// ============================================================
 // MAIN GAME
 // ============================================================
 const NAV = [
@@ -1293,6 +1554,7 @@ function Game({ initialPlayer, onLogout }) {
   const handleLogout = useCallback(async () => { await DB.logout(); onLogout(); }, [onLogout]);
 
   const unreadNotifs = notifs.filter(n => !n.read).length;
+  const navItems = player.is_admin ? [...NAV, { id:"admin", icon:"🛡️", label:"ADMIN" }] : NAV;
 
   return (
     <div style={S.app}>
@@ -1312,7 +1574,7 @@ function Game({ initialPlayer, onLogout }) {
             <div style={{ color:C.green, fontSize:12, marginTop:3 }}>${player.cash.toLocaleString()}</div>
           </div>
           <div style={{ flex:1, paddingTop:6, overflowY:"auto" }}>
-            {NAV.map(n => (
+            {navItems.map(n => (
               <div key={n.id} style={S.navItem(page===n.id)} onClick={() => setPage(n.id)}>
                 <span>{n.icon}</span><span>{n.label}</span>
                 {n.id==="mail" && unreadNotifs > 0 && <span style={{ marginLeft:"auto", background:C.red, color:"#fff", borderRadius:"50%", width:16, height:16, fontSize:9, display:"flex", alignItems:"center", justifyContent:"center", fontWeight:900 }}>{unreadNotifs}</span>}
@@ -1337,7 +1599,7 @@ function Game({ initialPlayer, onLogout }) {
         {/* MAIN */}
         <div style={S.main}>
           <div style={{ color:C.muted, fontSize:10, letterSpacing:2, marginBottom:16, borderBottom:`1px solid ${C.border}`, paddingBottom:10, display:"flex", justifyContent:"space-between" }}>
-            <span>{NAV.find(n=>n.id===page)?.icon} {NAV.find(n=>n.id===page)?.label}</span>
+            <span>{navItems.find(n=>n.id===page)?.icon} {navItems.find(n=>n.id===page)?.label}</span>
             <NotifBell playerId={player.id} count={unreadNotifs} onClick={() => { setPage("mail"); DB.markNotificationsRead(player.id); }} />
           </div>
           {page==="profile"     && <ProfilePage    player={player} onStatUp={handleStatUp} onHospital={handleHospital} onBailOut={handleBailOut} />}
@@ -1347,6 +1609,7 @@ function Game({ initialPlayer, onLogout }) {
           {page==="syndicates"  && <SyndicatesPage player={player} onCreateSyndicate={handleCreateSyndicate} onJoinSyndicate={handleJoinSyndicate} />}
           {page==="mail"        && <MailPage       player={player} />}
           {page==="leaderboard" && <LeaderboardPage player={player} />}
+          {page==="admin" && player.is_admin && <AdminPage player={player} notify={notify} />}
         </div>
       </div>
     </div>
