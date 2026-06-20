@@ -4,8 +4,8 @@ import { useState, useEffect, useRef, useCallback, memo } from "react";
 // SUPABASE CONFIG — paste your project URL and anon key here
 // Get them from: Supabase Dashboard → Settings → API
 // ============================================================
-const SUPABASE_URL  = "https://mpinckzjyzymwwrbstkk.supabase.co";
-const SUPABASE_ANON = "sb_publishable_Zt0Y6cpESGLpVSMNcM5tdA_Iu9EaMbs";
+const SUPABASE_URL  = "https://uiottkcndpjsbuueqlep.supabase.co";
+const SUPABASE_ANON = "sb_publishable_t3ihw2FzQADgj3Cac4OARA_uJS07QFr";
 
 // Minimal Supabase client (no npm needed in artifact)
 function createClient(url, key) {
@@ -46,6 +46,10 @@ function createClient(url, key) {
     async signUp(email, password) {
       const r = await fetch(`${url}/auth/v1/signup`, { method: "POST", headers, body: JSON.stringify({ email, password }) });
       const d = await r.json();
+      if (d.access_token) {
+        sessionStorage.setItem("sb_token", d.access_token);
+        sessionStorage.setItem("sb_uid",   d.user.id);
+      }
       return { data: d, error: d.error_description || d.msg || null };
     },
     async signIn(email, password) {
@@ -228,9 +232,10 @@ const DB = {
     const { data: authData, error: authErr } = await supabase.auth.signUp(email, password);
     if (authErr) return { error: authErr };
     const player = createPlayer(displayName, username, authData.user?.id);
+    const { syndicate_name, ...row } = player; // syndicate_name is a UI-only derived field, not a DB column
     const tbl = await supabase.authedFrom("players");
-    const { data, error } = await tbl.insert(player);
-    return { data: Array.isArray(data) ? data[0] : data, error };
+    const { data, error } = await tbl.insert(row);
+    return { data: Array.isArray(data) ? { ...(data[0]), syndicate_name: null } : data, error };
   },
 
   async login(emailOrUser, password) {
@@ -481,6 +486,12 @@ function StatusBars({ player, compact }) {
 // ============================================================
 // AUTH PAGE
 // ============================================================
+function formatError(error) {
+  if (!error) return "";
+  if (typeof error === "string") return error;
+  return error.message || error.error_description || error.msg || error.hint || error.details || JSON.stringify(error);
+}
+
 function AuthPage({ onLogin }) {
   const [tab,  setTab]  = useState("login");
   const [form, setForm] = useState({ email:"", username:"", password:"", name:"" });
@@ -492,13 +503,13 @@ function AuthPage({ onLogin }) {
     try {
       if (tab === "login") {
         const { data, error } = await DB.login(form.email || form.username, form.password);
-        if (error) setErr(String(error));
+        if (error) setErr(formatError(error));
         else onLogin(data);
       } else {
         if (!form.username || !form.password || !form.name) { setErr("All fields required."); return; }
         const email = form.email || `${form.username}@shadowdominion.local`;
         const { data, error } = await DB.register(email, form.password, form.username, form.name);
-        if (error) setErr(String(error));
+        if (error) setErr(formatError(error));
         else onLogin(data);
       }
     } catch (e) {
