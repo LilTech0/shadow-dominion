@@ -4,8 +4,8 @@ import { useState, useEffect, useRef, useCallback, memo } from "react";
 // SUPABASE CONFIG — paste your project URL and anon key here
 // Get them from: Supabase Dashboard → Settings → API
 // ============================================================
-const SUPABASE_URL  = "https://uiottkcndpjsbuueqlep.supabase.co";
-const SUPABASE_ANON = "sb_publishable_t3ihw2FzQADgj3Cac4OARA_uJS07QFr";
+const SUPABASE_URL  = "https://pjbncrcwuibnekavaypq.supabase.co";
+const SUPABASE_ANON = "sb_publishable_zrB_hyPR5F5deh4q6rs5eA_XTcODF1m";
 
 // Minimal Supabase client (no npm needed in artifact)
 function createClient(url, key) {
@@ -231,11 +231,14 @@ const DB = {
     }
     const { data: authData, error: authErr } = await supabase.auth.signUp(email, password);
     if (authErr) return { error: authErr };
-    const player = createPlayer(displayName, username, authData.user?.id);
-    const { syndicate_name, ...row } = player; // syndicate_name is a UI-only derived field, not a DB column
-    const tbl = await supabase.authedFrom("players");
-    const { data, error } = await tbl.insert(row);
-    return { data: Array.isArray(data) ? { ...(data[0]), syndicate_name: null } : data, error };
+    const uid = authData.user?.id;
+    if (!uid) return { error: "Registration failed — please try again." };
+    // Uses a SECURITY DEFINER RPC (bypasses RLS) instead of a direct insert,
+    // because right after signUp() there may be no session token yet
+    // (e.g. if "Confirm email" is enabled in Supabase Auth settings).
+    const res = await supabase.rpc("register_player", { p_user_id: uid, p_username: username, p_name: displayName });
+    if (res?.error) return { error: res.error };
+    return { data: res?.player, error: null };
   },
 
   async login(emailOrUser, password) {
