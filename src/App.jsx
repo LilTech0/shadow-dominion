@@ -51,27 +51,56 @@ function regenH(ts){return Math.floor(((Date.now()-ts)/1000)/180);}
 function newPlayer(name,username){return{name,username,level:1,xp:0,cash:1000,reputation:0,strength:10,defense:10,dexterity:10,statPoints:0,energy:MAX_E,nerve:MAX_N,health:MAX_H,lastEnergyRegen:Date.now(),lastNerveRegen:Date.now(),lastHealthRegen:Date.now(),inventory:[],equippedWeapon:null,equippedArmor:null,syndicate:null,syndicateRole:null,loginStreak:0,lastLoginDate:null,loginRewardClaimed:false,wins:0,losses:0,attackCooldowns:{},attacksToday:{},lastAttackResetDate:null,crimeStats:{total:0,success:0}};}
 function newEnemy(lvl){const l=Math.max(1,lvl+Math.floor(Math.random()*5)-2);const names=["Street Rat","Corner Boy","Blood Hawk","Iron Mask","The Warden","Ghost Nine","Viper","Cold Cut","Razor","The Judge"];return{id:`e_${Date.now()}`,name:names[Math.floor(Math.random()*names.length)],level:l,strength:8+l*2,defense:6+l*2,dexterity:5+l,health:MAX_H,maxHealth:MAX_H,equippedWeapon:l>=7?"shotgun":l>=5?"pistol":l>=3?"pipe":"knife",equippedArmor:l>=6?"jacket":l>=4?"vest":null,cash:Math.floor(Math.random()*l*300+100),xp:l*15};}
 
-const C={bg:"#08080e",card:"#0f0f18",border:"#1c1c2c",red:"#e8001e",redBg:"#1a0008",green:"#00e87a",greenBg:"#001a10",blue:"#4d9fff",blueBg:"#001228",orange:"#ff8c00",orangeBg:"#1a0e00",purple:"#9b6dff",gold:"#ffd700",goldBg:"#1a1400",text:"#d4d4d4",muted:"#555566",dim:"#333344"};
+const C={
+  bg:"#1a1a1a",card:"#222222",border:"#333333",
+  red:"#cc0000",redBg:"#2a0000",
+  green:"#00cc44",greenBg:"#002a0e",
+  blue:"#3399ff",blueBg:"#001a33",
+  orange:"#ff8800",orangeBg:"#2a1400",
+  purple:"#9966ff",gold:"#ffcc00",goldBg:"#2a2000",
+  text:"#e0e0e0",muted:"#888888",dim:"#444444",
+  topBar:"#111111",statBg:"#2a2a2a",navBg:"#1a1a1a",
+};
+const BG_STYLE={
+  backgroundImage:`
+    radial-gradient(ellipse at top left, #2a0a0a 0%, transparent 50%),
+    radial-gradient(ellipse at bottom right, #0a0a2a 0%, transparent 50%),
+    linear-gradient(180deg, #111111 0%, #1a1a1a 100%)
+  `,
+  backgroundAttachment:"fixed",
+};
 const S={
-  app:{minHeight:"100vh",background:C.bg,color:C.text,fontFamily:"'Courier New',monospace",fontSize:13},
-  authWrap:{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"100vh",padding:20,background:`radial-gradient(ellipse at center,#150010 0%,${C.bg} 70%)`},
-  authBox:{background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:32,width:"100%",maxWidth:400},
-  card:(x={})=>({background:C.card,border:`1px solid ${C.border}`,borderRadius:6,padding:16,marginBottom:12,...x}),
-  ct:{color:C.red,fontSize:10,letterSpacing:3,textTransform:"uppercase",marginBottom:12},
-  inp:{width:"100%",background:"#0a0a12",border:`1px solid ${C.border}`,borderRadius:4,padding:"10px 12px",color:C.text,fontSize:13,outline:"none",boxSizing:"border-box",marginBottom:10},
-  btn:(c=C.red,b=C.redBg)=>({background:b,border:`1px solid ${c}44`,borderRadius:4,padding:"9px 18px",color:c,fontSize:11,letterSpacing:2,cursor:"pointer",fontWeight:700}),
-  btnF:(c=C.red,b=C.redBg)=>({width:"100%",background:b,border:`1px solid ${c}44`,borderRadius:4,padding:"11px",color:c,fontSize:11,letterSpacing:2,cursor:"pointer",fontWeight:700}),
-  badge:(c)=>({display:"inline-block",padding:"2px 7px",borderRadius:10,fontSize:9,background:c+"18",color:c,border:`1px solid ${c}33`,letterSpacing:1}),
-  bar:(p,c)=>({height:"100%",width:`${Math.min(100,Math.max(0,p))}%`,background:c,transition:"width 0.4s",borderRadius:2}),
-  barW:{background:"#0a0a12",borderRadius:2,height:7,overflow:"hidden",flex:1},
+  app:{minHeight:"100vh",...BG_STYLE,color:C.text,fontFamily:"Arial,sans-serif",fontSize:13},
+  authWrap:{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"100vh",padding:20,...BG_STYLE},
+  authBox:{background:"#222222cc",border:`1px solid #444`,borderRadius:8,padding:32,width:"100%",maxWidth:400,backdropFilter:"blur(10px)"},
+  card:(x={})=>({background:"#22222299",border:`1px solid #333`,borderRadius:6,padding:16,marginBottom:10,...x}),
+  ct:{color:C.orange,fontSize:11,letterSpacing:2,textTransform:"uppercase",marginBottom:10,fontWeight:700},
+  inp:{width:"100%",background:"#111",border:`1px solid #444`,borderRadius:4,padding:"10px 12px",color:C.text,fontSize:13,outline:"none",boxSizing:"border-box",marginBottom:10},
+  btn:(c=C.red,b=C.redBg)=>({background:b,border:`1px solid ${c}66`,borderRadius:4,padding:"8px 16px",color:c,fontSize:11,letterSpacing:1,cursor:"pointer",fontWeight:700}),
+  btnF:(c=C.red,b=C.redBg)=>({width:"100%",background:b,border:`1px solid ${c}66`,borderRadius:4,padding:"10px",color:c,fontSize:11,letterSpacing:1,cursor:"pointer",fontWeight:700}),
+  badge:(c)=>({display:"inline-block",padding:"2px 8px",borderRadius:3,fontSize:9,background:c+"22",color:c,border:`1px solid ${c}44`,letterSpacing:1,fontWeight:700}),
+  bar:(p,c)=>({height:"100%",width:`${Math.min(100,Math.max(0,p))}%`,background:`linear-gradient(90deg,${c}aa,${c})`,transition:"width 0.4s",borderRadius:2,boxShadow:`0 0 6px ${c}66`}),
+  barW:{background:"#111",borderRadius:2,height:10,overflow:"hidden",flex:1,border:"1px solid #333"},
   row:{display:"flex",gap:8,alignItems:"center",marginBottom:6},
   g2:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10},
-  logB:{background:"#06060e",border:`1px solid ${C.dim}`,borderRadius:4,padding:10,maxHeight:180,overflowY:"auto",fontSize:11,lineHeight:1.9},
-  nav:(a)=>({padding:"10px 18px",cursor:"pointer",fontSize:11,letterSpacing:1,color:a?C.red:C.muted,background:a?C.redBg:"transparent",borderLeft:`2px solid ${a?C.red:"transparent"}`,display:"flex",alignItems:"center",gap:8,userSelect:"none"}),
-  sb:{width:"30%",minWidth:160,maxWidth:260,background:"#0b0b14",borderRight:`1px solid ${C.border}`,display:"flex",flexDirection:"column"},
+  logB:{background:"#111",border:`1px solid #333`,borderRadius:4,padding:10,maxHeight:180,overflowY:"auto",fontSize:11,lineHeight:1.9},
+  nav:(a)=>({padding:"12px 8px",cursor:"pointer",fontSize:9,letterSpacing:1,color:a?"#fff":C.muted,background:a?C.red+"33":"transparent",borderBottom:`2px solid ${a?C.red:"transparent"}`,display:"flex",flexDirection:"column",alignItems:"center",gap:3,userSelect:"none",flex:1,textAlign:"center",fontWeight:a?700:400}),
+  sb:{background:C.topBar,borderBottom:`1px solid #333`,display:"flex",flexDirection:"row",overflowX:"auto"},
 };
 const RC={muted:C.muted,rare:C.blue,legendary:C.gold,common:C.muted};
 
+function TopStatBar({label,val,max,color,regen}){
+  const pct=Math.min(100,Math.max(0,(val/max)*100));
+  const full=Math.floor(val)>=max;
+  return(<div style={{display:"flex",alignItems:"center",gap:6}}>
+    <span style={{color:"#888",fontSize:9,minWidth:42,letterSpacing:1}}>{label}</span>
+    <div style={{flex:1,background:"#111",borderRadius:2,height:12,overflow:"hidden",border:"1px solid #333",position:"relative"}}>
+      <div style={{height:"100%",width:pct+"%",background:`linear-gradient(90deg,${color}88,${color})`,transition:"width 0.4s",boxShadow:`0 0 8px ${color}66`}}/>
+      <span style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:8,color:"#fff",fontWeight:700,textShadow:"0 0 4px #000"}}>{Math.floor(val)}/{max}</span>
+    </div>
+    <span style={{color:full?"#555":color,fontSize:8,minWidth:44}}>{full?"FULL":"+1 "+regen}</span>
+  </div>);
+}
 function RegenBar({label,val,max,color,icon,regenRate}){
   const pct=Math.min(100,Math.max(0,(val/max)*100));
   const isFull=Math.floor(val)>=max;
@@ -622,38 +651,56 @@ function Game({initialPlayer,onLogout}){
   return(<div style={S.app}>
     {toast&&<Toast msg={toast} onClose={()=>setToast(null)}/>}
     {showDaily&&!player.loginRewardClaimed&&<DailyModal player={player} onClaim={handleDaily} onClose={()=>setShowDaily(false)}/>}
-    <div style={{display:"flex",minHeight:"100vh"}}>
-      <div style={S.sb}>
-        <div style={{padding:"18px 16px 14px",borderBottom:`1px solid ${C.border}`}}>
-          <div style={{color:C.red,fontSize:16,fontWeight:900,letterSpacing:4,textShadow:`0 0 12px ${C.red}66`}}>SHADOW</div>
-          <div style={{color:C.red,fontSize:16,fontWeight:900,letterSpacing:4,textShadow:`0 0 12px ${C.red}66`}}>DOMINION</div>
-          <div style={{color:C.dim,fontSize:9,letterSpacing:2,marginTop:2}}>ALPHA v0.1</div>
+    <div style={{display:"flex",flexDirection:"column",minHeight:"100vh"}}>
+
+      {/* TOP BAR — like Cartel Empire */}
+      <div style={{background:"#111",borderBottom:"1px solid #333",padding:"6px 12px",display:"flex",justifyContent:"space-between",alignItems:"center",flexShrink:0}}>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <span style={{color:C.red,fontSize:14,fontWeight:900,letterSpacing:3,textShadow:`0 0 10px ${C.red}88`}}>SHADOW DOMINION</span>
+          <span style={{...S.badge(C.orange)}}>{player.syndicate||"No Syndicate"}</span>
         </div>
-        <div style={{padding:"10px 14px 12px",borderBottom:`1px solid ${C.border}`}}>
-          <div style={{color:"#fff",fontSize:13,fontWeight:700}}>{player.name}</div>
-          <div style={{color:C.muted,fontSize:10}}>LVL {player.level} · ⭐{player.reputation}</div>
-          <div style={{color:C.green,fontSize:12,marginTop:2}}>${player.cash.toLocaleString()}</div>
-        </div>
-        <div style={{padding:"10px 14px",borderBottom:`1px solid ${C.border}`}}>
-          <RegenBar label="ENERGY" val={player.energy} max={MAX_E} color={C.blue} icon="⚡" regenRate="1/5min"/>
-          <RegenBar label="NERVE"  val={player.nerve}  max={MAX_N} color={C.orange} icon="🧠" regenRate="1/10min"/>
-          <RegenBar label="HEALTH" val={player.health} max={MAX_H} color={C.green} icon="❤️" regenRate="1/3min"/>
-          {!player.loginRewardClaimed&&<button style={{...S.btnF(C.gold,"#2a1f00"),marginTop:8,fontSize:9}} onClick={()=>setShowDaily(true)}>🎁 CLAIM DAILY</button>}
-          <button onClick={onLogout} style={{...S.btnF(C.muted,"#14141e"),marginTop:6,fontSize:9}}>LOGOUT</button>
-        </div>
-        <div style={{flex:1,paddingTop:6}}>
-          {NAV.map(n=>(<div key={n.id} style={S.nav(page===n.id)} onClick={()=>setPage(n.id)}><span>{n.icon}</span><span style={{fontSize:10,letterSpacing:1}}>{n.label}</span></div>))}
+        <div style={{display:"flex",gap:6,alignItems:"center"}}>
+          {!player.loginRewardClaimed&&<button style={{...S.btn(C.gold,"#2a1f00"),padding:"4px 10px",fontSize:9}} onClick={()=>setShowDaily(true)}>🎁 DAILY</button>}
+          <button onClick={onLogout} style={{...S.btn(C.muted,"#222"),padding:"4px 10px",fontSize:9}}>LOGOUT</button>
         </div>
       </div>
-      <div style={{flex:1,width:"70%",padding:20,overflowY:"auto"}}>
-        <div style={{color:C.muted,fontSize:10,letterSpacing:2,marginBottom:14,paddingBottom:10,borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-          <span>{NAV.find(n=>n.id===page)?.icon} {NAV.find(n=>n.id===page)?.label}</span>
-          <span style={{color:C.dim}}>⚡{Math.floor(player.energy)} 🧠{Math.floor(player.nerve)} ❤️{Math.floor(player.health)}</span>
+
+      {/* STAT BARS ROW — like Cartel Empire top bars */}
+      <div style={{background:"#161616",borderBottom:"1px solid #2a2a2a",padding:"6px 12px",flexShrink:0}}>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"4px 16px",marginBottom:4}}>
+          <TopStatBar label="ENERGY" val={player.energy} max={MAX_E} color="#ff6600" regen="1/5min"/>
+          <TopStatBar label="HEALTH" val={player.health} max={MAX_H} color="#00cc44" regen="1/3min"/>
         </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"4px 16px",marginBottom:6}}>
+          <TopStatBar label="NERVE" val={player.nerve} max={MAX_N} color="#3399ff" regen="1/10min"/>
+          <div style={{display:"flex",alignItems:"center",gap:6,fontSize:10}}>
+            <span style={{color:C.muted}}>LVL</span><span style={{color:C.gold,fontWeight:900,fontSize:13}}>{player.level}</span>
+            <span style={{color:C.muted,marginLeft:8}}>REP</span><span style={{color:C.orange,fontWeight:900}}>{player.reputation.toLocaleString()}</span>
+          </div>
+        </div>
+        {/* Mini stats row */}
+        <div style={{display:"flex",gap:16,fontSize:10,flexWrap:"wrap"}}>
+          <span>👤 <span style={{color:"#fff",fontWeight:700}}>{player.name}</span></span>
+          <span>💰 <span style={{color:C.green,fontWeight:700}}>${player.cash.toLocaleString()}</span></span>
+          <span>⚔️ <span style={{color:C.red,fontWeight:700}}>W{player.wins}/L{player.losses}</span></span>
+          <span>🔪 <span style={{color:C.muted}}>{player.crimeStats?.total||0} crimes</span></span>
+        </div>
+      </div>
+
+      {/* ICON NAV BAR — like Cartel Empire bottom icons */}
+      <div style={S.sb}>
+        {NAV.map(n=>(<div key={n.id} style={S.nav(page===n.id)} onClick={()=>setPage(n.id)}>
+          <span style={{fontSize:18}}>{n.icon}</span>
+          <span>{n.label}</span>
+        </div>))}
+      </div>
+
+      {/* MAIN CONTENT */}
+      <div style={{flex:1,padding:16,overflowY:"auto",maxWidth:900,width:"100%",margin:"0 auto"}}>
         {page==="profile"    &&<ProfilePage   player={player} onStatUp={handleStatUp}/>}
         {page==="crimes"     &&<CrimesPage    player={player} onCrime={handleCrime}/>}
         {page==="combat"     &&<CombatPage    player={player} onCombat={handleCombat}/>}
-        {page==="gym"        &&<GymPage player={player} onTrain={handleTrain}/>}
+        {page==="gym"        &&<GymPage       player={player} onTrain={handleTrain}/>}
         {page==="inventory"  &&<InventoryPage player={player} onBuy={handleBuy} onEquip={handleEquip}/>}
         {page==="syndicates" &&<SyndicatesPage player={player} onCreate={handleCreate} onJoin={handleJoin} onLeave={handleLeave} onContribute={handleContribute}/>}
         {page==="leaderboard"&&<LeaderboardPage player={player}/>}
