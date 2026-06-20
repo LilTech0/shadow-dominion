@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback, memo } from "react";
 // SUPABASE CONFIG — paste your project URL and anon key here
 // Get them from: Supabase Dashboard → Settings → API
 // ============================================================
-const SUPABASE_URL  = "https://https://mpinckzjyzymwwrbstkk.supabase.co";
+const SUPABASE_URL  = "https://mpinckzjyzymwwrbstkk.supabase.co";
 const SUPABASE_ANON = "sb_publishable_Zt0Y6cpESGLpVSMNcM5tdA_Iu9EaMbs";
 
 // Minimal Supabase client (no npm needed in artifact)
@@ -489,18 +489,23 @@ function AuthPage({ onLogin }) {
 
   async function handle() {
     setErr(""); setBusy(true);
-    if (tab === "login") {
-      const { data, error } = await DB.login(form.email || form.username, form.password);
-      if (error) setErr(String(error));
-      else onLogin(data);
-    } else {
-      if (!form.username || !form.password || !form.name) { setErr("All fields required."); setBusy(false); return; }
-      const email = form.email || `${form.username}@shadowdominion.local`;
-      const { data, error } = await DB.register(email, form.password, form.username, form.name);
-      if (error) setErr(String(error));
-      else onLogin(data);
+    try {
+      if (tab === "login") {
+        const { data, error } = await DB.login(form.email || form.username, form.password);
+        if (error) setErr(String(error));
+        else onLogin(data);
+      } else {
+        if (!form.username || !form.password || !form.name) { setErr("All fields required."); return; }
+        const email = form.email || `${form.username}@shadowdominion.local`;
+        const { data, error } = await DB.register(email, form.password, form.username, form.name);
+        if (error) setErr(String(error));
+        else onLogin(data);
+      }
+    } catch (e) {
+      setErr("Network error — check your connection and try again.");
+    } finally {
+      setBusy(false);
     }
-    setBusy(false);
   }
 
   return (
