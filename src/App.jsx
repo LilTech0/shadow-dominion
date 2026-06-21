@@ -259,7 +259,8 @@ const DB = {
     // (e.g. if "Confirm email" is enabled in Supabase Auth settings).
     const res = await supabase.rpc("register_player", { p_user_id: uid, p_username: username, p_name: displayName });
     if (res?.error) return { error: res.error };
-    return { data: res?.player, error: null };
+    if (!res?.player) return { error: res?.message || "register_player function returned no data — check it exists in Supabase (Database → Functions)." };
+    return { data: res.player, error: null };
   },
 
   async login(emailOrUser, password) {
@@ -635,6 +636,7 @@ function AuthPage({ onLogin }) {
         const email = form.email || `${form.username}@shadowdominion.local`;
         const { data, error } = await DB.register(email, form.password, form.username, form.name);
         if (error) setErr(formatError(error));
+        else if (!data) setErr("Registration failed — no character was created. The database function may be missing; check Supabase Functions for register_player.");
         else onLogin(data);
       }
     } catch (e) {
