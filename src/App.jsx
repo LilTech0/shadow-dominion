@@ -259,10 +259,12 @@ const DB = {
     const { data, error } = await supabase.auth.signIn(emailOrUser, password);
     if (error) return { error };
     const uid = data.user?.id || supabase.auth.getUserId();
+    if (!uid) return { error: "Login failed — please try again." };
     const tbl = await supabase.authedFrom("players");
     const { data: rows } = await tbl.select("*,syndicates(name)", { filter: `user_id=eq.${uid}`, limit: 1 });
     const player = rows?.[0];
-    if (player?.syndicates) { player.syndicate_name = player.syndicates.name; delete player.syndicates; }
+    if (!player) return { error: "No character found for this account. Try registering, or contact support if this persists." };
+    if (player.syndicates) { player.syndicate_name = player.syndicates.name; delete player.syndicates; }
     return { data: player, error: null };
   },
 
@@ -613,6 +615,7 @@ function AuthPage({ onLogin }) {
       if (tab === "login") {
         const { data, error } = await DB.login(form.email || form.username, form.password);
         if (error) setErr(formatError(error));
+        else if (!data) setErr("Login failed — no account data returned. Please try again.");
         else onLogin(data);
       } else {
         if (!form.username || !form.password || !form.name) { setErr("All fields required."); return; }
