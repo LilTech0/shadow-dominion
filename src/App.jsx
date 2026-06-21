@@ -237,9 +237,22 @@ const DB = {
       memStore.mail[p.id] = [];
       return { data: p, error: null };
     }
-    const { data: authData, error: authErr } = await supabase.auth.signUp(email, password);
+    let { data: authData, error: authErr } = await supabase.auth.signUp(email, password);
+    let uid = authData?.user?.id;
+
+    // If this email already has an auth account (e.g. from an earlier attempt
+    // where signUp succeeded but the player row never got created), don't just
+    // give up — try signing in with the same credentials and repair it instead.
+    if (authErr && /already registered|already exists|user_already_exists/i.test(String(authErr))) {
+      const signInRes = await supabase.auth.signIn(email, password);
+      if (signInRes.error) {
+        return { error: "This email is already registered with a different password. Try logging in instead, or use a different email." };
+      }
+      authErr = null;
+      uid = signInRes.data?.user?.id || supabase.auth.getUserId();
+    }
+
     if (authErr) return { error: authErr };
-    const uid = authData.user?.id;
     if (!uid) return { error: "Registration failed — please try again." };
     // Uses a SECURITY DEFINER RPC (bypasses RLS) instead of a direct insert,
     // because right after signUp() there may be no session token yet
