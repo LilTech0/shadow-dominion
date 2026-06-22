@@ -442,77 +442,276 @@ function GymPage({player,onTrain}) {
 }
 
 // ============================================================
+// COMBAT PAGE — NPC + PvP
+// ============================================================
+const ATK_COOLDOWN=60000, MAX_APT=5;
+
+function runFight(attacker, defender, onTick, onDone) {
+  let pH=attacker.health, eH=defender.health, round=0;
+  const nl=[];
+  const eWpn=ITEMS.find(i=>i.id===defender.equippedWeapon);
+  const eArm=ITEMS.find(i=>i.id===defender.equippedArmor);
+  const eAtk=(defender.strength||10)+(eWpn?.weaponDmg||0)+(defender.level||1)*2;
+  const eDef=(defender.defense||10)+(eArm?.armorRating||0)+(defender.level||1)*2;
+  function tick() {
+    if(pH<=0||eH<=0||round>=20){
+      const won=eH<=0&&pH>0;
+      nl.push(won?`🏆 YOU WIN — +${won?2:0} REP`:`💀 DEFEATED — sent to hospital`);
+      onTick([...nl]);
+      onDone({won,healthLost:Math.max(0,attacker.health-pH),enemyHealthLost:Math.max(0,defender.health-eH),rounds:round});
+      return;
+    }
+    round++;
+    if(Math.random()*100<=calcHitChance(attacker.dexterity,defender.dexterity||10)){
+      const crit=Math.random()*100<=calcCritChance(attacker.dexterity);
+      let dmg=calcDamage(calcAttack(attacker),eDef);
+      if(crit){dmg*=2;nl.push(`⚡ CRIT! You deal ${Math.floor(dmg)} dmg`);}
+      else nl.push(`👊 R${round}: You hit for ${Math.floor(dmg)}`);
+      eH=Math.max(0,eH-dmg);
+    } else nl.push(`💨 R${round}: You missed`);
+    if(eH>0&&Math.random()*100<=calcHitChance(defender.dexterity||10,attacker.dexterity)){
+      const dmg=calcDamage(eAtk,calcDefense(attacker));
+      nl.push(`🔴 ${defender.name} hits for ${Math.floor(dmg)}`);
+      pH=Math.max(0,pH-dmg);
+    } else if(eH>0) nl.push(`💨 ${defender.name} missed`);
+    onTick([...nl]);
+    setTimeout(tick,300);
+  }
+  tick();
+}
+
+// ============================================================
 // COMBAT PAGE
 // ============================================================
-function CombatPage({player,onCombat}) {
+function CombatPage({player,onCombat,initTarget}) {
+  const [mode,setMode]=useState(initTarget?"pvp":"npc");
+  // NPC state
   const [enemy,setEnemy]=useState(null);
-  const [log,setLog]=useState([]);
-  const [fighting,setFighting]=useState(false);
-  const [result,setResult]=useState(null);
+  const [npcLog,setNpcLog]=useState([]);
+  const [npcFighting,setNpcFighting]=useState(false);
+  const [npcResult,setNpcResult]=useState(null);
+  // PvP state
+  const [pvpSearch,setPvpSearch]=useState(initTarget?.username||"");
+  const [pvpTarget,setPvpTarget]=useState(initTarget||null);
+  const [pvpLog,setPvpLog]=useState([]);
+  const [pvpFighting,setPvpFighting]=useState(false);
+  const [pvpResult,setPvpResult]=useState(null);
+  const [pvpErr,setPvpErr]=useState("");
+  const [cdLeft,setCdLeft]=useState(0);
+  const cdRef=useRef(null);
 
-  function findEnemy(){setEnemy(createEnemy(player.level));setLog([]);setResult(null);}
+  // When initTarget changes (new attack from leaderboard), reload target
+  useEffect(()=>{
+    if(!initTarget)return;
+    setMode("pvp");
+    setPvpSearch(initTarget.username||"");
+    setPvpTarget(initTarget);
+    setPvpLog([]);
+    setPvpResult(null);
+    setPvpErr("");
+  },[initTarget]);
 
-  function fight() {
-    if(!enemy||fighting)return;
-    if(player.energy<5){setLog(["❌ Need 5 energy"]);return;}
-    setFighting(true);
-    const nl=[]; let pH=player.health, eH=enemy.health, round=0;
-    const eWpn=ITEMS.find(i=>i.id===enemy.equippedWeapon);
-    const eArm=ITEMS.find(i=>i.id===enemy.equippedArmor);
-    const eAtk=enemy.strength+(eWpn?.weaponDmg||0)+enemy.level*2;
-    const eDef=enemy.defense+(eArm?.armorRating||0)+enemy.level*2;
-    function tick() {
-      if(pH<=0||eH<=0||round>=20){
-        const won=eH<=0;
-        nl.push(won?`🏆 YOU WIN — +$${enemy.cash} | +${enemy.xp}XP | +2 REP`:`💀 DEFEATED — -2 REP`);
-        setLog([...nl]); setResult(won?"WIN":"LOSE"); setFighting(false);
-        onCombat({won,cash:won?enemy.cash:0,xp:won?enemy.xp:0,rep:won?2:-2,healthLost:player.health-pH,energyCost:5});
-        return;
-      }
-      round++;
-      if(Math.random()*100<=calcHitChance(player.dexterity,enemy.dexterity)){
-        const crit=Math.random()*100<=calcCritChance(player.dexterity);
-        let dmg=calcDamage(calcAttack(player),eDef);
-        if(crit){dmg*=2;nl.push(`⚡ CRIT! You deal ${Math.floor(dmg)} dmg`);}
-        else nl.push(`👊 R${round}: You hit for ${Math.floor(dmg)}`);
-        eH=Math.max(0,eH-dmg);
-      } else nl.push(`💨 R${round}: You missed`);
-      if(eH>0&&Math.random()*100<=calcHitChance(enemy.dexterity,player.dexterity)){
-        const dmg=calcDamage(eAtk,calcDefense(player));
-        nl.push(`🔴 ${enemy.name} hits for ${Math.floor(dmg)}`);
-        pH=Math.max(0,pH-dmg);
-      } else if(eH>0) nl.push(`💨 ${enemy.name} missed`);
-      setLog([...nl]);
-      setTimeout(tick,350);
+  // Cooldown timer for selected target
+  useEffect(()=>{
+    if(!pvpTarget)return;
+    const cds=JSON.parse(localStorage.getItem("sd_pvp_cds")||"{}");
+    const last=cds[pvpTarget.username]||0;
+    const left=Math.max(0,ATK_COOLDOWN-(Date.now()-last));
+    setCdLeft(left);
+    if(left>0){
+      cdRef.current=setInterval(()=>{
+        const l2=Math.max(0,ATK_COOLDOWN-(Date.now()-last));
+        setCdLeft(l2);
+        if(l2===0)clearInterval(cdRef.current);
+      },500);
     }
-    tick();
+    return()=>clearInterval(cdRef.current);
+  },[pvpTarget]);
+
+  function getAttacksToday(username){
+    const today=new Date().toDateString();
+    const data=JSON.parse(localStorage.getItem("sd_pvp_atks")||"{}");
+    if(data.date!==today)return 0;
+    return data[username]||0;
   }
 
+  function recordAttack(username){
+    const today=new Date().toDateString();
+    const data=JSON.parse(localStorage.getItem("sd_pvp_atks")||"{}");
+    if(data.date!==today){localStorage.setItem("sd_pvp_atks",JSON.stringify({date:today,[username]:1}));return;}
+    data[username]=(data[username]||0)+1;
+    localStorage.setItem("sd_pvp_atks",JSON.stringify(data));
+  }
+
+  function searchPlayer(){
+    setPvpErr(""); setPvpTarget(null); setPvpLog([]); setPvpResult(null);
+    if(!pvpSearch.trim())return;
+    const accs=getAccounts();
+    const uname=pvpSearch.trim().toLowerCase();
+    if(uname===player.username){setPvpErr("❌ Can't attack yourself");return;}
+    if(!accs[uname]){setPvpErr("❌ Player not found");return;}
+    setPvpTarget(accs[uname].player);
+  }
+
+  function attackPlayer(){
+    if(!pvpTarget||pvpFighting)return;
+    if(player.energy<5){setPvpErr("❌ Need 5 energy");return;}
+    if(player.health<=20){setPvpErr("❌ Too injured to fight (need >20 HP)");return;}
+    const atks=getAttacksToday(pvpTarget.username);
+    if(atks>=MAX_APT){setPvpErr(`❌ Max ${MAX_APT} attacks per player per day`);return;}
+    if(cdLeft>0){setPvpErr(`❌ Cooldown: wait ${Math.ceil(cdLeft/1000)}s`);return;}
+    setPvpFighting(true);setPvpErr("");
+    runFight(
+      player, pvpTarget,
+      logs=>setPvpLog(logs),
+      ({won,healthLost,rounds})=>{
+        setPvpResult(won?"WIN":"LOSE");
+        setPvpFighting(false);
+        // Record cooldown
+        const cds=JSON.parse(localStorage.getItem("sd_pvp_cds")||"{}");
+        cds[pvpTarget.username]=Date.now();
+        localStorage.setItem("sd_pvp_cds",JSON.stringify(cds));
+        recordAttack(pvpTarget.username);
+        // Update defender in localStorage — hospitalize if attacker won
+        const accs=getAccounts();
+        if(accs[pvpTarget.username]){
+          const def=accs[pvpTarget.username].player;
+          if(won){
+            accs[pvpTarget.username].player={
+              ...def,
+              health:Math.max(1,Math.floor(def.health*0.25)),
+              inHospitalUntil:Date.now()+5*60000,
+            };
+          }
+          saveAccounts(accs);
+        }
+        onCombat({won,cash:0,xp:won?pvpTarget.level*10:0,rep:won?3:-1,healthLost,energyCost:5,isPvp:true,targetName:pvpTarget.name});
+      }
+    );
+  }
+
+  // NPC fight
+  function fightNPC(){
+    if(!enemy||npcFighting)return;
+    if(player.energy<5){setNpcLog(["❌ Need 5 energy"]);return;}
+    setNpcFighting(true);
+    runFight(
+      player, enemy,
+      logs=>setNpcLog(logs),
+      ({won,healthLost})=>{
+        setNpcResult(won?"WIN":"LOSE");
+        setNpcFighting(false);
+        onCombat({won,cash:won?enemy.cash:0,xp:won?enemy.xp:0,rep:won?2:-1,healthLost,energyCost:5,isPvp:false});
+      }
+    );
+  }
+
+  const inHosp=player.inHospitalUntil&&player.inHospitalUntil>Date.now();
+  const hospLeft=inHosp?Math.ceil((player.inHospitalUntil-Date.now())/60000):0;
+  const pvpAtksToday=pvpTarget?getAttacksToday(pvpTarget.username):0;
+
   return(<div>
-    <div style={S.card()}><div style={S.ct}>⚔️ STREET COMBAT</div><div style={{color:C.muted,fontSize:11}}>Costs 5 energy per fight</div></div>
-    <div style={S.g2}>
-      <div style={S.card()}><div style={S.ct}>YOU</div>
-        {[["ATK",calcAttack(player),C.red],["DEF",calcDefense(player),C.blue],["HP",player.health,C.green]].map(([l,v,c])=>(
-          <div key={l} style={{...S.row,justifyContent:"space-between"}}><span style={{color:C.muted,fontSize:10}}>{l}</span><span style={{color:c,fontWeight:900}}>{v}</span></div>
-        ))}
-      </div>
-      <div style={S.card()}><div style={S.ct}>TARGET</div>
-        {enemy?(<>
-          <div style={{color:C.red,fontWeight:700,marginBottom:8}}>{enemy.name} LVL{enemy.level}</div>
-          {[["ATK",eAtk=enemy.strength+(ITEMS.find(i=>i.id===enemy.equippedWeapon)?.weaponDmg||0)+enemy.level*2,C.red],["DEF",enemy.defense+(ITEMS.find(i=>i.id===enemy.equippedArmor)?.armorRating||0)+enemy.level*2,C.blue],["💰","$"+enemy.cash,C.gold]].map(([l,v,c])=>(
+    {inHosp&&<div style={S.card({borderColor:"#1a4a7a",background:"#060d18"})}>
+      <div style={S.ct}>🏥 IN HOSPITAL</div>
+      <div style={{color:C.blue,fontSize:12,marginBottom:6}}>Recovering from injuries — <span style={{color:"#fff",fontWeight:700}}>{hospLeft} min remaining</span>.</div>
+      <div style={{color:C.muted,fontSize:11}}>You cannot fight while hospitalized. Health regens over time.</div>
+    </div>}
+
+    <div style={{display:"flex",gap:8,marginBottom:12}}>
+      {["npc","pvp"].map(m=>(
+        <button key={m} onClick={()=>setMode(m)} style={{padding:"8px 20px",background:mode===m?C.red:"#14141e",border:`1px solid ${mode===m?C.red:C.border}`,borderRadius:4,color:mode===m?"#fff":C.muted,cursor:"pointer",fontSize:11,letterSpacing:2}}>
+          {m==="npc"?"🤖 STREET FIGHT":"⚔️ PvP ATTACK"}
+        </button>
+      ))}
+    </div>
+
+    {mode==="npc"&&<div>
+      <div style={S.card()}><div style={S.ct}>🤖 STREET FIGHT</div><div style={{color:C.muted,fontSize:11}}>Fight NPCs for cash & XP · Costs 5 energy</div></div>
+      <div style={S.g2}>
+        <div style={S.card()}><div style={S.ct}>YOU</div>
+          {[["ATK",calcAttack(player),C.red],["DEF",calcDefense(player),C.blue],["HP",player.health,C.green]].map(([l,v,c])=>(
             <div key={l} style={{...S.row,justifyContent:"space-between"}}><span style={{color:C.muted,fontSize:10}}>{l}</span><span style={{color:c,fontWeight:900}}>{v}</span></div>
           ))}
-        </>):<div style={{color:C.dim}}>No target</div>}
+        </div>
+        <div style={S.card()}><div style={S.ct}>ENEMY</div>
+          {enemy?(<>
+            <div style={{color:C.red,fontWeight:700,marginBottom:6}}>{enemy.name} LVL{enemy.level}</div>
+            <div style={{...S.row,justifyContent:"space-between"}}><span style={{color:C.muted,fontSize:10}}>HP</span><span style={{color:C.green,fontWeight:900}}>{enemy.health}</span></div>
+            <div style={{...S.row,justifyContent:"space-between"}}><span style={{color:C.muted,fontSize:10}}>💰</span><span style={{color:C.gold,fontWeight:900}}>${enemy.cash}</span></div>
+          </>):<div style={{color:C.dim}}>No target</div>}
+        </div>
       </div>
-    </div>
-    <div style={{display:"flex",gap:8,marginBottom:12}}>
-      <button style={S.btn(C.muted,"#14141e")} onClick={findEnemy}>🔍 FIND TARGET</button>
-      {enemy&&!result&&<button style={{...S.btn(),opacity:fighting?0.5:1}} onClick={fight} disabled={fighting}>{fighting?"FIGHTING...":"⚔️ ATTACK"}</button>}
-      {result&&<button style={S.btn(C.muted,"#14141e")} onClick={()=>{setEnemy(null);setResult(null);setLog([]);}}>NEW TARGET</button>}
-    </div>
-    {log.length>0&&<div style={S.card()}>
-      <div style={{...S.ct,marginBottom:8}}>BATTLE LOG {result&&<span style={S.badge(result==="WIN"?C.green:"#ff4d4d")}>{result}</span>}</div>
-      <div style={S.logB}>{log.map((l,i)=><div key={i} style={{color:/You hit|CRIT|WIN/.test(l)?C.green:/missed/.test(l)?C.muted:"#ff6e6e"}}>{l}</div>)}</div>
+      <div style={{display:"flex",gap:8,marginBottom:12}}>
+        <button style={S.btn(C.muted,"#14141e")} onClick={()=>{setEnemy(createEnemy(player.level));setNpcLog([]);setNpcResult(null);}}>🔍 FIND</button>
+        {enemy&&!npcResult&&<button style={{...S.btn(),opacity:npcFighting||inHosp?0.5:1}} onClick={fightNPC} disabled={npcFighting||inHosp}>{npcFighting?"FIGHTING...":"⚔️ ATTACK"}</button>}
+        {npcResult&&<button style={S.btn(C.muted,"#14141e")} onClick={()=>{setEnemy(null);setNpcResult(null);setNpcLog([]);}}>NEW</button>}
+      </div>
+      {npcLog.length>0&&<div style={S.card()}>
+        <div style={{...S.ct,marginBottom:8}}>BATTLE LOG {npcResult&&<span style={S.badge(npcResult==="WIN"?C.green:"#ff4d4d")}>{npcResult}</span>}</div>
+        <div style={S.logB}>{npcLog.map((l,i)=><div key={i} style={{color:/You hit|CRIT|WIN/.test(l)?C.green:/missed/.test(l)?C.muted:"#ff6e6e"}}>{l}</div>)}</div>
+      </div>}
+    </div>}
+
+    {mode==="pvp"&&<div>
+      <div style={S.card()}>
+        <div style={S.ct}>⚔️ PvP ATTACK</div>
+        <div style={{color:C.muted,fontSize:11,marginBottom:10}}>
+          Win = <span style={{color:C.green}}>+3 REP</span> · Lose = <span style={{color:C.red}}>-1 REP + hospital (3 min)</span><br/>
+          Loser hospitalized 5 min · 60s cooldown · Max {MAX_APT} attacks/player/day · Need &gt;20 HP
+        </div>
+        {/* Search */}
+        <div style={{display:"flex",gap:8,marginBottom:10}}>
+          <input style={{...S.inp,marginBottom:0,flex:1}} placeholder="Search by username..." value={pvpSearch} onChange={e=>setPvpSearch(e.target.value)} onKeyDown={e=>e.key==="Enter"&&searchPlayer()}/>
+          <button style={S.btn(C.orange,C.orangeBg)} onClick={searchPlayer}>SEARCH</button>
+        </div>
+        {pvpErr&&<div style={{color:C.red,fontSize:11,marginBottom:8}}>{pvpErr}</div>}
+      </div>
+
+      {pvpTarget&&<div>
+        <div style={S.card({borderColor:C.red+"44"})}>
+          <div style={S.ct}>🎯 TARGET</div>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
+            <div>
+              <div style={{color:"#fff",fontWeight:700,fontSize:15}}>{pvpTarget.name}</div>
+              <div style={{color:C.muted,fontSize:11}}>@{pvpTarget.username}</div>
+              {pvpTarget.syndicate&&<div style={{marginTop:3}}><span style={S.badge(C.purple)}>🏴 {pvpTarget.syndicate}</span></div>}
+              {pvpTarget.inHospitalUntil&&pvpTarget.inHospitalUntil>Date.now()&&(
+                <div style={{marginTop:4}}><span style={S.badge(C.blue)}>🏥 IN HOSPITAL</span></div>
+              )}
+            </div>
+            <div style={{textAlign:"right"}}>
+              <div style={{color:C.red,fontSize:18,fontWeight:900}}>LVL {pvpTarget.level}</div>
+              <div style={{color:C.orange,fontSize:11}}>⭐ {pvpTarget.reputation} REP</div>
+            </div>
+          </div>
+          <div style={S.g2}>
+            <div>
+              {[["ATK",calcAttack(pvpTarget),C.red],["DEF",calcDefense(pvpTarget),C.blue],["HP",pvpTarget.health,C.green],["DEX",pvpTarget.dexterity,C.orange]].map(([l,v,c])=>(
+                <div key={l} style={{...S.row,justifyContent:"space-between"}}><span style={{color:C.muted,fontSize:10}}>{l}</span><span style={{color:c,fontWeight:900}}>{v}</span></div>
+              ))}
+            </div>
+            <div>
+              <div style={{color:C.muted,fontSize:10,marginBottom:6}}>ATTACK STATUS</div>
+              <div style={{fontSize:11,marginBottom:4}}>Today: <span style={{color:pvpAtksToday>=MAX_APT?C.red:C.green}}>{pvpAtksToday}/{MAX_APT}</span></div>
+              <div style={{fontSize:11,marginBottom:8}}>Cooldown: <span style={{color:cdLeft>0?C.orange:C.green}}>{cdLeft>0?Math.ceil(cdLeft/1000)+"s":"Ready"}</span></div>
+              {!pvpResult&&<button
+                style={{...S.btn(),opacity:(pvpFighting||inHosp||cdLeft>0||pvpAtksToday>=MAX_APT||player.health<=20)?0.4:1,cursor:"pointer",width:"100%"}}
+                onClick={attackPlayer}
+                disabled={pvpFighting||inHosp||cdLeft>0||pvpAtksToday>=MAX_APT||player.health<=20}>
+                {pvpFighting?"FIGHTING...":inHosp?"🏥 HOSPITALIZED":cdLeft>0?`WAIT ${Math.ceil(cdLeft/1000)}s`:"⚔️ ATTACK"}
+              </button>}
+              {pvpResult&&<div>
+                <div style={{...S.badge(pvpResult==="WIN"?C.green:"#ff4d4d"),fontSize:12,padding:"6px 12px",marginBottom:8,display:"block",textAlign:"center"}}>{pvpResult==="WIN"?"🏆 VICTORY +3 REP":"💀 DEFEATED — YOU'RE IN HOSPITAL"}</div>
+                <button style={{...S.btn(C.muted,"#14141e"),width:"100%"}} onClick={()=>{setPvpTarget(null);setPvpResult(null);setPvpLog([]);setPvpSearch("");}}>NEW TARGET</button>
+              </div>}
+            </div>
+          </div>
+        </div>
+        {pvpLog.length>0&&<div style={S.card()}>
+          <div style={{...S.ct,marginBottom:8}}>⚔️ BATTLE LOG {pvpResult&&<span style={S.badge(pvpResult==="WIN"?C.green:"#ff4d4d")}>{pvpResult}</span>}</div>
+          <div style={S.logB}>{pvpLog.map((l,i)=><div key={i} style={{color:/You hit|CRIT|WIN/.test(l)?C.green:/missed/.test(l)?C.muted:"#ff6e6e"}}>{l}</div>)}</div>
+        </div>}
+      </div>}
     </div>}
   </div>);
 }
@@ -627,25 +826,61 @@ function SyndicatesPage({player,onCreate,onJoin,onLeave,onContribute}) {
 // ============================================================
 // LEADERBOARD PAGE
 // ============================================================
-function LeaderboardPage({player}) {
+function LeaderboardPage({player,onAttackFromLB}) {
   const [tab,setTab]=useState("players");
   const accounts=getAccounts();
   const players=Object.values(accounts).map(a=>a.player).sort((a,b)=>b.level-a.level||b.reputation-a.reputation);
   const syndicates=getSyndicates().sort((a,b)=>b.level-a.level||b.treasury-a.treasury);
+
+  const inHosp=player.inHospitalUntil&&player.inHospitalUntil>Date.now();
+
   return(<div>
     <Tabs tabs={["players","syndicates"]} active={tab} onSelect={setTab}/>
     {tab==="players"&&<div style={S.card()}>
       <div style={S.ct}>🏆 TOP PLAYERS</div>
-      <div style={{display:"grid",gridTemplateColumns:"28px 1fr 50px 55px 70px",gap:6,color:C.dim,fontSize:9,letterSpacing:1,marginBottom:8}}><span>#</span><span>NAME</span><span>LVL</span><span>REP</span><span>CASH</span></div>
-      {players.slice(0,100).map((p,i)=>(
-        <div key={p.username} style={{display:"grid",gridTemplateColumns:"28px 1fr 50px 55px 70px",gap:6,padding:"8px 4px",borderBottom:`1px solid ${C.border}`,background:p.username===player.username?C.redBg:"transparent",borderRadius:2}}>
-          <span style={{color:i===0?C.gold:i===1?"#c0c0c0":i===2?"#cd7f32":C.muted,fontWeight:i<3?900:400}}>{i===0?"🥇":i===1?"🥈":i===2?"🥉":i+1}</span>
-          <span style={{color:p.username===player.username?C.red:"#fff",fontWeight:700}}>{p.name}{p.username===player.username&&" 👈"}</span>
-          <span style={{color:C.purple,fontWeight:700}}>{p.level}</span>
-          <span style={{color:C.orange}}>{p.reputation}</span>
-          <span style={{color:C.green,fontSize:10}}>${Math.floor(p.cash/1000)}k</span>
-        </div>
-      ))}
+      <div style={{color:C.muted,fontSize:10,marginBottom:10}}>
+        Click <span style={{color:C.red,fontWeight:700}}>⚔️ ATTACK</span> to challenge any player — takes you straight to combat
+        {inHosp&&<span style={{color:C.blue,marginLeft:8}}>· 🏥 You are hospitalized</span>}
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"28px 1fr 40px 45px 55px 64px",gap:6,color:C.dim,fontSize:9,letterSpacing:1,marginBottom:8,padding:"0 4px"}}>
+        <span>#</span><span>NAME</span><span>LVL</span><span>REP</span><span>CASH</span><span></span>
+      </div>
+      {players.slice(0,100).map((p,i)=>{
+        const isMe=p.username===player.username;
+        const targetInHosp=p.inHospitalUntil&&p.inHospitalUntil>Date.now();
+        return(
+          <div key={p.username} style={{display:"grid",gridTemplateColumns:"28px 1fr 40px 45px 55px 64px",gap:6,padding:"8px 4px",borderBottom:`1px solid ${C.border}`,background:isMe?C.redBg:"transparent",borderRadius:2,alignItems:"center"}}>
+            <span style={{color:i===0?C.gold:i===1?"#c0c0c0":i===2?"#cd7f32":C.muted,fontWeight:i<3?900:400,fontSize:i<3?13:11}}>
+              {i===0?"🥇":i===1?"🥈":i===2?"🥉":i+1}
+            </span>
+            <div>
+              <div style={{color:isMe?C.red:"#fff",fontWeight:700,fontSize:11}}>{p.name}{isMe&&" 👈"}</div>
+              {targetInHosp&&<div style={{fontSize:9,color:C.blue}}>🏥 hospitalized</div>}
+            </div>
+            <span style={{color:C.purple,fontWeight:700,fontSize:11}}>{p.level}</span>
+            <span style={{color:C.orange,fontSize:11}}>{p.reputation}</span>
+            <span style={{color:C.green,fontSize:10}}>${Math.floor(p.cash/1000)}k</span>
+            {isMe
+              ? <span style={{color:C.dim,fontSize:9,textAlign:"center"}}>YOU</span>
+              : <button
+                  style={{
+                    ...S.btn(inHosp?C.muted:C.red, inHosp?C.dim:C.redBg),
+                    padding:"4px 8px",
+                    fontSize:10,
+                    opacity:inHosp?0.4:1,
+                    cursor:inHosp?"not-allowed":"pointer",
+                    width:"100%",
+                  }}
+                  onClick={()=>!inHosp&&onAttackFromLB(p)}
+                  disabled={inHosp}
+                  title={inHosp?"You are hospitalized — cannot attack":"Attack "+p.name}
+                >
+                  ⚔️ ATK
+                </button>
+            }
+          </div>
+        );
+      })}
       {players.length===0&&<div style={{color:C.dim}}>No players yet.</div>}
     </div>}
     {tab==="syndicates"&&<div style={S.card()}>
@@ -861,6 +1096,7 @@ function Game({initialPlayer,onLogout}) {
   const [page,setPage]=useState("profile");
   const [toast,setToast]=useState(null);
   const [showDaily,setShowDaily]=useState(!initialPlayer.loginRewardClaimed);
+  const [pvpInitTarget,setPvpInitTarget]=useState(null);
   const notify=useCallback(msg=>setToast(msg),[]);
 
   // Regen tick
@@ -908,8 +1144,28 @@ function Game({initialPlayer,onLogout}) {
     setPlayer(p=>lvlUp({...p,nerve:Math.max(0,p.nerve-nerveCost),cash:p.cash+cash,xp:p.xp+xp,reputation:Math.max(0,p.reputation+rep),crimeStats:{total:(p.crimeStats?.total||0)+1,success:(p.crimeStats?.success||0)+(success?1:0)}}));
   }
 
-  function handleCombat({won,cash,xp,rep,healthLost,energyCost}){
-    setPlayer(p=>lvlUp({...p,energy:Math.max(0,p.energy-energyCost),health:Math.max(1,p.health-Math.floor(healthLost)),cash:p.cash+cash,xp:p.xp+xp,reputation:Math.max(0,p.reputation+rep),wins:p.wins+(won?1:0),losses:p.losses+(won?0:1)}));
+  function handleCombat({won,cash,xp,rep,healthLost,energyCost,isPvp,targetName}){
+    setPlayer(p=>{
+      let u={...p,
+        energy:Math.max(0,p.energy-energyCost),
+        health:Math.max(1,p.health-Math.floor(healthLost)),
+        cash:p.cash+cash,
+        xp:p.xp+xp,
+        reputation:Math.max(0,p.reputation+rep),
+        wins:p.wins+(won?1:0),
+        losses:p.losses+(won?0:1),
+      };
+      // If attacker lost PvP — they go to hospital for 3 mins, health tanked
+      if(isPvp&&!won){
+        u.inHospitalUntil=Date.now()+3*60000;
+        u.health=Math.max(1,Math.floor(p.health*0.25));
+      }
+      return lvlUp(u);
+    });
+    if(won&&isPvp) notify(`🏆 DEFEATED ${targetName}! +3 REP`);
+    else if(!won&&isPvp) notify(`💀 DEFEATED by ${targetName} — sent to hospital for 3 min!`);
+    else if(won) notify(`🏆 WIN — +$${cash.toLocaleString()} | +${xp}XP`);
+    else notify("💀 Defeated");
   }
 
   function handleTrain({statId,gain,energyCost}){
@@ -933,6 +1189,12 @@ function Game({initialPlayer,onLogout}) {
   function handleJoin(s){setPlayer(p=>({...p,syndicate:s.name}));notify(`✅ JOINED ${s.name}`);}
   function handleLeave(){setPlayer(p=>({...p,syndicate:null}));notify("🚪 Left syndicate");}
   function handleContribute(a){setPlayer(p=>({...p,cash:p.cash-a}));notify(`✅ Contributed $${a.toLocaleString()}`);}
+
+  // Called from leaderboard — navigate to combat with target pre-loaded
+  function handleAttackFromLB(target){
+    setPvpInitTarget(target);
+    setPage("combat");
+  }
 
   return(<div style={S.app}>
     {toast&&<Toast msg={toast} onClose={()=>setToast(null)}/>}
@@ -973,7 +1235,7 @@ function Game({initialPlayer,onLogout}) {
 
       {/* ICON NAV */}
       <div style={S.navBar}>
-        {NAV.map(n=>(<div key={n.id} style={S.nav(page===n.id)} onClick={()=>setPage(n.id)}>
+        {NAV.map(n=>(<div key={n.id} style={S.nav(page===n.id)} onClick={()=>{if(n.id!=="combat")setPvpInitTarget(null);setPage(n.id);}} >
           <span style={{fontSize:18}}>{n.icon}</span>
           <span>{n.label}</span>
         </div>))}
@@ -983,11 +1245,11 @@ function Game({initialPlayer,onLogout}) {
       <div style={{flex:1,padding:14,overflowY:"auto",maxWidth:860,width:"100%",margin:"0 auto"}}>
         {page==="profile"    &&<ProfilePage    player={player} onStatUp={handleStatUp}/>}
         {page==="crimes"     &&<CrimesPage     player={player} onCrime={handleCrime}/>}
-        {page==="combat"     &&<CombatPage     player={player} onCombat={handleCombat}/>}
+        {page==="combat"     &&<CombatPage     player={player} onCombat={handleCombat} initTarget={pvpInitTarget}/>}
         {page==="gym"        &&<GymPage        player={player} onTrain={handleTrain}/>}
         {page==="inventory"  &&<InventoryPage  player={player} onBuy={handleBuy} onEquip={handleEquip}/>}
         {page==="syndicates" &&<SyndicatesPage player={player} onCreate={handleCreate} onJoin={handleJoin} onLeave={handleLeave} onContribute={handleContribute}/>}
-        {page==="leaderboard"&&<LeaderboardPage player={player}/>}
+        {page==="leaderboard"&&<LeaderboardPage player={player} onAttackFromLB={handleAttackFromLB}/>}
       </div>
     </div>
   </div>);
