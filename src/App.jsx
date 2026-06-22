@@ -54,6 +54,37 @@ const MAX_ENERGY = 100, MAX_NERVE = 50, MAX_HEALTH = 100;
 const SYNDICATE_COST = 100000000;
 const ADMIN_USER = "admin", ADMIN_PASS = "ShadowAdmin@2024";
 
+// ── PROPERTIES ──────────────────────────────────────────────
+const PROPERTIES = [
+  { id:"safehouse",  name:"Safe House",        icon:"🏠", price:50000,    incomePerHour:500,   unlockLevel:5,  desc:"A quiet bolt-hole. Trickles in rent money." },
+  { id:"chopshop",   name:"Chop Shop",         icon:"🔧", price:250000,   incomePerHour:2500,  unlockLevel:15, desc:"Strip and sell stolen rides. Steady work." },
+  { id:"warehouse",  name:"Warehouse",         icon:"🏭", price:1000000,  incomePerHour:8000,  unlockLevel:25, desc:"Store and move product. Real money here." },
+  { id:"nightclub",  name:"Nightclub",         icon:"🎰", price:5000000,  incomePerHour:25000, unlockLevel:40, desc:"Front for the operation. Prints cash nightly." },
+  { id:"casino",     name:"Underground Casino",icon:"♠️", price:25000000, incomePerHour:100000,unlockLevel:60, desc:"High stakes. The house always wins — yours." },
+];
+
+// ── BLACK MARKET ─────────────────────────────────────────────
+const BM_POOL = [
+  { id:"bm_silencer", name:"Silencer Kit",    type:"weapon", weaponDmg:45, armorRating:0, rarity:"rare",      basePrice:12000 },
+  { id:"bm_smg",      name:"Compact SMG",     type:"weapon", weaponDmg:60, armorRating:0, rarity:"legendary", basePrice:30000 },
+  { id:"bm_ceramic",  name:"Ceramic Plate",   type:"armor",  weaponDmg:0,  armorRating:50,rarity:"legendary", basePrice:22000 },
+  { id:"bm_chainmail",name:"Dragon-Skin Vest",type:"armor",  weaponDmg:0,  armorRating:30,rarity:"rare",      basePrice:9000  },
+  { id:"bm_jammer",   name:"Signal Jammer",   type:"tool",   weaponDmg:0,  armorRating:0, rarity:"rare",      basePrice:8000,  crimeBonus:25 },
+  { id:"bm_drone",    name:"Recon Drone",     type:"tool",   weaponDmg:0,  armorRating:0, rarity:"legendary", basePrice:20000, crimeBonus:35 },
+  { id:"bm_stim",     name:"Combat Stims",    type:"consumable",weaponDmg:0,armorRating:0,rarity:"rare",      basePrice:5000  },
+  { id:"bm_medkit",   name:"Field Medkit",    type:"consumable",weaponDmg:0,armorRating:0,rarity:"common",    basePrice:2000  },
+];
+
+// ── PRESTIGE ─────────────────────────────────────────────────
+const PRESTIGE_BONUS = [
+  { tier:1, label:"GHOST",    color:"#aaa",    cashMult:1.10, xpMult:1.10, crimeBonus:5  },
+  { tier:2, label:"PHANTOM",  color:"#4d9fff", cashMult:1.25, xpMult:1.20, crimeBonus:10 },
+  { tier:3, label:"WRAITH",   color:"#9b6dff", cashMult:1.50, xpMult:1.35, crimeBonus:18 },
+  { tier:4, label:"SPECTER",  color:"#ff8c00", cashMult:1.80, xpMult:1.50, crimeBonus:25 },
+  { tier:5, label:"SHADOW",   color:"#e8001e", cashMult:2.20, xpMult:2.00, crimeBonus:35 },
+];
+const PRESTIGE_REQ_LEVEL = 50;
+
 function calcAttack(p)  { const w = ITEMS.find(i=>i.id===p.equippedWeapon); return p.strength+(w?.weaponDmg||0)+p.level*2; }
 function calcDefense(p) { const a = ITEMS.find(i=>i.id===p.equippedArmor);  return p.defense+(a?.armorRating||0)+p.level*2; }
 function calcHitChance(ad,dd) { return Math.min(95,Math.max(20,75+ad/10-dd/10)); }
@@ -76,7 +107,33 @@ function createPlayer(name,username) {
     inventory:[], equippedWeapon:null, equippedArmor:null,
     syndicate:null, loginStreak:0, lastLoginDate:null, loginRewardClaimed:false,
     wins:0, losses:0, crimeStats:{total:0,success:0},
+    properties:{}, lastPropertyCollect:Date.now(),
+    prestigeTier:0, prestigeCount:0,
+    bmSeed:Date.now(),
   };
+}
+
+// ── helpers ──────────────────────────────────────────────────
+function getPrestige(tier){ return PRESTIGE_BONUS.find(p=>p.tier===tier)||null; }
+function calcPropertyIncome(props, lastCollect) {
+  const hours = Math.min(24, (Date.now()-lastCollect)/3600000);
+  return PROPERTIES.reduce((sum,p)=>{
+    const qty = props[p.id]||0;
+    return sum + Math.floor(p.incomePerHour * qty * hours);
+  },0);
+}
+function getDailyBMItems(seed) {
+  const dateKey = new Date().toDateString();
+  let h = 0;
+  for(let i=0;i<(seed+dateKey).length;i++) h = Math.imul(31,h)+(seed+dateKey).charCodeAt(i)|0;
+  const rng = (n) => { h = Math.imul(h^(h>>>16),0x45d9f3b); h = Math.imul(h^(h>>>16),0x45d9f3b); return Math.abs(h^(h>>>16)) % n; };
+  const pool = [...BM_POOL];
+  for(let i=pool.length-1;i>0;i--){ const j=rng(i+1); [pool[i],pool[j]]=[pool[j],pool[i]]; }
+  return pool.slice(0,4).map(item=>({
+    ...item,
+    price: Math.floor(item.basePrice*(0.7+rng(60)/100)),
+    stock: 1+rng(3),
+  }));
 }
 
 function createEnemy(playerLevel) {
@@ -289,6 +346,7 @@ function ProfilePage({player,onStatUp}) {
           <div style={{color:"#fff",fontSize:20,fontWeight:900,letterSpacing:2}}>{player.name}</div>
           <div style={{color:C.muted,fontSize:10}}>@{player.username}</div>
           {player.syndicate&&<div style={{marginTop:4}}><span style={S.badge(C.purple)}>🏴 {player.syndicate}</span></div>}
+          {player.prestigeTier>0&&<div style={{marginTop:4}}><span style={S.badge(getPrestige(player.prestigeTier)?.color||C.muted)}>{getPrestige(player.prestigeTier)?.label} T{player.prestigeTier}</span></div>}
         </div>
         <div style={{textAlign:"right"}}>
           <div style={{color:C.red,fontSize:24,fontWeight:900}}>LVL {player.level}</div>
@@ -480,17 +538,12 @@ function runFight(attacker, defender, onTick, onDone) {
   tick();
 }
 
-// ============================================================
-// COMBAT PAGE
-// ============================================================
 function CombatPage({player,onCombat,initTarget}) {
   const [mode,setMode]=useState(initTarget?"pvp":"npc");
-  // NPC state
   const [enemy,setEnemy]=useState(null);
   const [npcLog,setNpcLog]=useState([]);
   const [npcFighting,setNpcFighting]=useState(false);
   const [npcResult,setNpcResult]=useState(null);
-  // PvP state
   const [pvpSearch,setPvpSearch]=useState(initTarget?.username||"");
   const [pvpTarget,setPvpTarget]=useState(initTarget||null);
   const [pvpLog,setPvpLog]=useState([]);
@@ -500,7 +553,6 @@ function CombatPage({player,onCombat,initTarget}) {
   const [cdLeft,setCdLeft]=useState(0);
   const cdRef=useRef(null);
 
-  // When initTarget changes (new attack from leaderboard), reload target
   useEffect(()=>{
     if(!initTarget)return;
     setMode("pvp");
@@ -511,7 +563,6 @@ function CombatPage({player,onCombat,initTarget}) {
     setPvpErr("");
   },[initTarget]);
 
-  // Cooldown timer for selected target
   useEffect(()=>{
     if(!pvpTarget)return;
     const cds=JSON.parse(localStorage.getItem("sd_pvp_cds")||"{}");
@@ -567,12 +618,10 @@ function CombatPage({player,onCombat,initTarget}) {
       ({won,healthLost,rounds})=>{
         setPvpResult(won?"WIN":"LOSE");
         setPvpFighting(false);
-        // Record cooldown
         const cds=JSON.parse(localStorage.getItem("sd_pvp_cds")||"{}");
         cds[pvpTarget.username]=Date.now();
         localStorage.setItem("sd_pvp_cds",JSON.stringify(cds));
         recordAttack(pvpTarget.username);
-        // Update defender in localStorage — hospitalize if attacker won
         const accs=getAccounts();
         if(accs[pvpTarget.username]){
           const def=accs[pvpTarget.username].player;
@@ -590,7 +639,6 @@ function CombatPage({player,onCombat,initTarget}) {
     );
   }
 
-  // NPC fight
   function fightNPC(){
     if(!enemy||npcFighting)return;
     if(player.energy<5){setNpcLog(["❌ Need 5 energy"]);return;}
@@ -659,7 +707,6 @@ function CombatPage({player,onCombat,initTarget}) {
           Win = <span style={{color:C.green}}>+3 REP</span> · Lose = <span style={{color:C.red}}>-1 REP + hospital (3 min)</span><br/>
           Loser hospitalized 5 min · 60s cooldown · Max {MAX_APT} attacks/player/day · Need &gt;20 HP
         </div>
-        {/* Search */}
         <div style={{display:"flex",gap:8,marginBottom:10}}>
           <input style={{...S.inp,marginBottom:0,flex:1}} placeholder="Search by username..." value={pvpSearch} onChange={e=>setPvpSearch(e.target.value)} onKeyDown={e=>e.key==="Enter"&&searchPlayer()}/>
           <button style={S.btn(C.orange,C.orangeBg)} onClick={searchPlayer}>SEARCH</button>
@@ -824,6 +871,229 @@ function SyndicatesPage({player,onCreate,onJoin,onLeave,onContribute}) {
 }
 
 // ============================================================
+// PROPERTIES PAGE
+// ============================================================
+function PropertiesPage({player,onBuyProperty,onCollect}) {
+  const ownedIds=Object.keys(player.properties||{}).filter(k=>(player.properties[k]||0)>0);
+  const pendingIncome=calcPropertyIncome(player.properties||{},player.lastPropertyCollect||Date.now());
+  const totalPerHour=PROPERTIES.reduce((s,p)=>s+(p.incomePerHour*(player.properties?.[p.id]||0)),0);
+  const prestige=getPrestige(player.prestigeTier||0);
+  const cashMult=prestige?.cashMult||1;
+
+  return(<div>
+    <div style={S.card({borderColor:C.gold+"44"})}>
+      <div style={S.ct}>🏠 PROPERTY EMPIRE</div>
+      <div style={{display:"flex",gap:20,flexWrap:"wrap",marginBottom:12}}>
+        <div><div style={{color:C.gold,fontWeight:900,fontSize:18}}>${pendingIncome.toLocaleString()}</div><div style={{color:C.muted,fontSize:9}}>PENDING INCOME</div></div>
+        <div><div style={{color:C.green,fontWeight:900,fontSize:18}}>${totalPerHour.toLocaleString()}/hr</div><div style={{color:C.muted,fontSize:9}}>TOTAL RATE</div></div>
+        <div><div style={{color:C.orange,fontWeight:900,fontSize:18}}>{ownedIds.length}</div><div style={{color:C.muted,fontSize:9}}>PROPERTIES</div></div>
+      </div>
+      {pendingIncome>0
+        ?<button style={S.btnF(C.gold,C.goldBg)} onClick={()=>onCollect(pendingIncome)}>
+            💰 COLLECT ${pendingIncome.toLocaleString()}{cashMult>1&&<span style={{color:C.green,marginLeft:6}}>×{cashMult} PRESTIGE</span>}
+          </button>
+        :<div style={{color:C.dim,fontSize:11}}>No income yet — buy a property below.</div>
+      }
+    </div>
+
+    {PROPERTIES.map(prop=>{
+      const owned=player.properties?.[prop.id]||0;
+      const unlocked=player.level>=prop.unlockLevel;
+      const canAfford=player.cash>=prop.price;
+      return(<div key={prop.id} style={S.card({opacity:unlocked?1:0.45,borderColor:owned>0?C.gold+"33":C.border})}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+          <div>
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3}}>
+              <span style={{fontSize:20}}>{prop.icon}</span>
+              <span style={{color:owned>0?C.gold:"#fff",fontWeight:700,fontSize:14}}>{prop.name}</span>
+              {owned>0&&<span style={S.badge(C.gold)}>×{owned}</span>}
+            </div>
+            <div style={{color:C.muted,fontSize:11}}>{prop.desc}</div>
+          </div>
+          <div style={{textAlign:"right",minWidth:80}}>
+            {!unlocked
+              ?<span style={S.badge(C.red)}>LVL {prop.unlockLevel}</span>
+              :<button
+                style={{...S.btn(canAfford?C.orange:C.muted,canAfford?C.orangeBg:"#14141e"),opacity:canAfford?1:0.4,cursor:canAfford?"pointer":"not-allowed",whiteSpace:"nowrap"}}
+                onClick={()=>canAfford&&onBuyProperty(prop)}
+                disabled={!canAfford}>
+                BUY
+              </button>
+            }
+          </div>
+        </div>
+        <div style={{display:"flex",gap:16,fontSize:11,flexWrap:"wrap"}}>
+          <span style={{color:C.green}}>💰 ${prop.price.toLocaleString()}</span>
+          <span style={{color:C.gold}}>+${prop.incomePerHour.toLocaleString()}/hr</span>
+          {owned>0&&<span style={{color:C.orange}}>earning ${(prop.incomePerHour*owned).toLocaleString()}/hr total</span>}
+        </div>
+      </div>);
+    })}
+  </div>);
+}
+
+// ============================================================
+// BLACK MARKET PAGE
+// ============================================================
+function BlackMarketPage({player,onBuy}) {
+  const [purchased,setPurchased]=useState({});
+  const items=getDailyBMItems(player.bmSeed||Date.now());
+  const RC={common:C.muted,rare:C.blue,legendary:C.gold};
+  const prestige=getPrestige(player.prestigeTier||0);
+
+  const today=new Date().toDateString();
+  const [lastDay,setLastDay]=useState(today);
+  useEffect(()=>{ if(today!==lastDay){setPurchased({});setLastDay(today);} },[today,lastDay]);
+
+  function buyItem(item) {
+    const bought=purchased[item.id]||0;
+    if(bought>=item.stock)return;
+    if(player.cash<item.price)return;
+    onBuy({...item, isBM:true});
+    setPurchased(p=>({...p,[item.id]:(p[item.id]||0)+1}));
+  }
+
+  return(<div>
+    <div style={S.card({borderColor:C.purple+"44"})}>
+      <div style={S.ct}>🕵️ BLACK MARKET</div>
+      <div style={{color:C.muted,fontSize:11,marginBottom:6}}>
+        Exclusive gear. Refreshes daily at midnight. Limited stock — first come first served.
+      </div>
+      {prestige&&<div style={{color:prestige.color,fontSize:11}}>✨ {prestige.label}: +{prestige.crimeBonus}% crime bonus active</div>}
+    </div>
+
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+      {items.map(item=>{
+        const bought=purchased[item.id]||0;
+        const remaining=item.stock-bought;
+        const canAfford=player.cash>=item.price;
+        const owned=player.inventory?.includes(item.id);
+        const soldOut=remaining<=0;
+        return(<div key={item.id} style={S.card({borderColor:soldOut?C.dim:item.rarity==="legendary"?C.gold+"44":C.border,opacity:soldOut?0.5:1})}>
+          <div style={{marginBottom:6}}>
+            <div style={{color:soldOut?C.dim:item.rarity==="legendary"?C.gold:item.rarity==="rare"?C.blue:"#fff",fontWeight:700,fontSize:12,marginBottom:2}}>{item.name}</div>
+            <span style={S.badge(RC[item.rarity]||C.muted)}>{item.rarity}</span>
+          </div>
+          <div style={{fontSize:10,color:C.muted,marginBottom:6}}>
+            {item.type==="weapon"?`+${item.weaponDmg} ATK`:item.type==="armor"?`+${item.armorRating} DEF`:item.type==="tool"?`+${item.crimeBonus} CRIME`:"CONSUMABLE"}
+          </div>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+            <span style={{color:C.green,fontWeight:700}}>${item.price.toLocaleString()}</span>
+            <span style={{color:soldOut?C.red:C.orange,fontSize:10}}>{soldOut?"SOLD OUT":`${remaining} left`}</span>
+          </div>
+          {soldOut||owned
+            ?<div style={{...S.badge(soldOut?C.red:C.green),textAlign:"center",padding:"6px",display:"block"}}>{soldOut?"SOLD OUT":"OWNED"}</div>
+            :<button
+              style={{...S.btnF(canAfford?C.purple:C.muted,canAfford?"#0d0018":"#14141e"),fontSize:10,padding:"7px",opacity:canAfford?1:0.4,cursor:canAfford?"pointer":"not-allowed"}}
+              onClick={()=>canAfford&&buyItem(item)}
+              disabled={!canAfford}>
+              BUY
+            </button>
+          }
+        </div>);
+      })}
+    </div>
+
+    <div style={S.card({marginTop:8})}>
+      <div style={S.ct}>🕐 NEXT REFRESH</div>
+      <div style={{color:C.muted,fontSize:11}}>Market resets at midnight. Check back daily for new stock.</div>
+      <div style={{color:C.purple,fontSize:12,marginTop:6,fontWeight:700}}>
+        {(() => {
+          const now=new Date();
+          const midnight=new Date(now); midnight.setHours(24,0,0,0);
+          const h=Math.floor((midnight-now)/3600000);
+          const m=Math.floor(((midnight-now)%3600000)/60000);
+          return `Refreshes in ${h}h ${m}m`;
+        })()}
+      </div>
+    </div>
+  </div>);
+}
+
+// ============================================================
+// PRESTIGE PAGE
+// ============================================================
+function PrestigePage({player,onPrestige}) {
+  const [confirm,setConfirm]=useState(false);
+  const currentTier=player.prestigeTier||0;
+  const nextTier=currentTier+1;
+  const nextPrestige=PRESTIGE_BONUS.find(p=>p.tier===nextTier);
+  const currentPrestige=getPrestige(currentTier);
+  const canPrestige=player.level>=PRESTIGE_REQ_LEVEL&&nextTier<=5;
+
+  return(<div>
+    {confirm&&<Confirm
+      msg={`PRESTIGE to ${nextPrestige?.label}? You will reset to Level 1 with +${Math.round((nextPrestige?.cashMult-1)*100)}% cash, +${Math.round((nextPrestige?.xpMult-1)*100)}% XP and +${nextPrestige?.crimeBonus}% crime bonus — permanently.`}
+      onYes={()=>{onPrestige(nextPrestige);setConfirm(false);}}
+      onNo={()=>setConfirm(false)}
+    />}
+
+    <div style={S.card({borderColor:currentPrestige?currentPrestige.color+"44":C.border})}>
+      <div style={S.ct}>⚡ PRESTIGE</div>
+      {currentPrestige
+        ?<div style={{marginBottom:12}}>
+          <div style={{color:currentPrestige.color,fontSize:22,fontWeight:900,letterSpacing:3,marginBottom:4}}>{currentPrestige.label} <span style={{fontSize:14}}>TIER {currentTier}</span></div>
+          <div style={{display:"flex",gap:16,flexWrap:"wrap",fontSize:11}}>
+            <span style={{color:C.green}}>+{Math.round((currentPrestige.cashMult-1)*100)}% CASH</span>
+            <span style={{color:C.purple}}>+{Math.round((currentPrestige.xpMult-1)*100)}% XP</span>
+            <span style={{color:C.orange}}>+{currentPrestige.crimeBonus}% CRIME</span>
+          </div>
+        </div>
+        :<div style={{color:C.dim,fontSize:12,marginBottom:12}}>No prestige yet. Reach Level {PRESTIGE_REQ_LEVEL} to begin.</div>
+      }
+      <div style={{color:C.muted,fontSize:11}}>
+        Level: <span style={{color:player.level>=PRESTIGE_REQ_LEVEL?C.green:C.orange,fontWeight:700}}>{player.level}/{PRESTIGE_REQ_LEVEL}</span>
+        {player.prestigeCount>0&&<span style={{color:C.muted,marginLeft:12}}>Times prestiged: {player.prestigeCount}</span>}
+      </div>
+    </div>
+
+    <div style={S.card()}>
+      <div style={S.ct}>🏅 PRESTIGE TIERS</div>
+      {PRESTIGE_BONUS.map(p=>{
+        const unlocked=currentTier>=p.tier;
+        const isCurrent=currentTier===p.tier;
+        const isNext=nextTier===p.tier;
+        return(<div key={p.tier} style={{padding:"12px 0",borderBottom:`1px solid ${C.border}`,opacity:unlocked||isNext?1:0.4}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <div>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3}}>
+                <span style={{color:p.color,fontWeight:900,fontSize:14}}>TIER {p.tier} — {p.label}</span>
+                {isCurrent&&<span style={S.badge(p.color)}>CURRENT</span>}
+                {unlocked&&!isCurrent&&<span style={S.badge(C.green)}>✓</span>}
+              </div>
+              <div style={{display:"flex",gap:12,fontSize:11,flexWrap:"wrap"}}>
+                <span style={{color:C.green}}>+{Math.round((p.cashMult-1)*100)}% cash</span>
+                <span style={{color:C.purple}}>+{Math.round((p.xpMult-1)*100)}% XP</span>
+                <span style={{color:C.orange}}>+{p.crimeBonus}% crime</span>
+              </div>
+            </div>
+            <span style={{color:C.muted,fontSize:10}}>LVL {PRESTIGE_REQ_LEVEL} req</span>
+          </div>
+        </div>);
+      })}
+    </div>
+
+    {nextTier<=5&&<div style={S.card({borderColor:canPrestige?C.red+"44":C.border})}>
+      <div style={S.ct}>🔥 PRESTIGE UP</div>
+      {nextPrestige&&<>
+        <div style={{color:C.muted,fontSize:11,marginBottom:12,lineHeight:1.6}}>
+          Reset to <span style={{color:"#fff"}}>Level 1</span> and become <span style={{color:nextPrestige.color,fontWeight:700}}>{nextPrestige.label}</span>.
+          Your stats, cash, and inventory carry over. You keep your properties and syndicate.
+          Gain permanent: <span style={{color:C.green}}>+{Math.round((nextPrestige.cashMult-1)*100)}% cash</span> · <span style={{color:C.purple}}>+{Math.round((nextPrestige.xpMult-1)*100)}% XP</span> · <span style={{color:C.orange}}>+{nextPrestige.crimeBonus}% crime success</span>
+        </div>
+        <button
+          style={{...S.btnF(canPrestige?C.red:C.muted,canPrestige?C.redBg:"#14141e"),opacity:canPrestige?1:0.4,cursor:canPrestige?"pointer":"not-allowed"}}
+          onClick={()=>canPrestige&&setConfirm(true)}
+          disabled={!canPrestige}>
+          {canPrestige?`⚡ PRESTIGE → ${nextPrestige.label}`:`REACH LVL ${PRESTIGE_REQ_LEVEL} TO PRESTIGE`}
+        </button>
+      </>}
+      {nextTier>5&&<div style={{color:C.gold,fontSize:13,fontWeight:700}}>MAX PRESTIGE REACHED — You are a true Shadow.</div>}
+    </div>}
+  </div>);
+}
+
+// ============================================================
 // LEADERBOARD PAGE
 // ============================================================
 function LeaderboardPage({player,onAttackFromLB}) {
@@ -831,7 +1101,6 @@ function LeaderboardPage({player,onAttackFromLB}) {
   const accounts=getAccounts();
   const players=Object.values(accounts).map(a=>a.player).sort((a,b)=>b.level-a.level||b.reputation-a.reputation);
   const syndicates=getSyndicates().sort((a,b)=>b.level-a.level||b.treasury-a.treasury);
-
   const inHosp=player.inHospitalUntil&&player.inHospitalUntil>Date.now();
 
   return(<div>
@@ -863,14 +1132,7 @@ function LeaderboardPage({player,onAttackFromLB}) {
             {isMe
               ? <span style={{color:C.dim,fontSize:9,textAlign:"center"}}>YOU</span>
               : <button
-                  style={{
-                    ...S.btn(inHosp?C.muted:C.red, inHosp?C.dim:C.redBg),
-                    padding:"4px 8px",
-                    fontSize:10,
-                    opacity:inHosp?0.4:1,
-                    cursor:inHosp?"not-allowed":"pointer",
-                    width:"100%",
-                  }}
+                  style={{...S.btn(inHosp?C.muted:C.red,inHosp?C.dim:C.redBg),padding:"4px 8px",fontSize:10,opacity:inHosp?0.4:1,cursor:inHosp?"not-allowed":"pointer",width:"100%"}}
                   onClick={()=>!inHosp&&onAttackFromLB(p)}
                   disabled={inHosp}
                   title={inHosp?"You are hospitalized — cannot attack":"Attack "+p.name}
@@ -1066,7 +1328,7 @@ function AdminPage({player,notify}) {
 // ADMIN LOGIN
 // ============================================================
 function AdminLogin({onLogin}) {
-  const [u,setU]=useState(""),  [p,setP]=useState(""), [e,setE]=useState("");
+  const [u,setU]=useState(""), [p,setP]=useState(""), [e,setE]=useState("");
   function login(){if(u===ADMIN_USER&&p===ADMIN_PASS)onLogin();else setE("Invalid credentials.");}
   return(<div style={S.authWrap}><div style={S.authBox}>
     <div style={{color:C.orange,fontSize:20,fontWeight:900,letterSpacing:4,textAlign:"center",marginBottom:20}}>⚙️ ADMIN PANEL</div>
@@ -1079,16 +1341,19 @@ function AdminLogin({onLogin}) {
 }
 
 // ============================================================
-// MAIN GAME
+// MAIN GAME — NAV now includes properties, blackmarket, prestige
 // ============================================================
 const NAV=[
-  {id:"profile",    icon:"👤",label:"PROFILE"},
-  {id:"crimes",     icon:"🔪",label:"CRIMES"},
-  {id:"combat",     icon:"⚔️", label:"COMBAT"},
-  {id:"gym",        icon:"🏋️",label:"GYM"},
-  {id:"inventory",  icon:"🎒",label:"ITEMS"},
-  {id:"syndicates", icon:"🏴",label:"SYNDICATES"},
-  {id:"leaderboard",icon:"🏆",label:"LEADERBOARD"},
+  {id:"profile",     icon:"👤", label:"PROFILE"},
+  {id:"crimes",      icon:"🔪", label:"CRIMES"},
+  {id:"combat",      icon:"⚔️",  label:"COMBAT"},
+  {id:"gym",         icon:"🏋️", label:"GYM"},
+  {id:"inventory",   icon:"🎒", label:"ITEMS"},
+  {id:"syndicates",  icon:"🏴", label:"SYNDICATES"},
+  {id:"properties",  icon:"🏠", label:"PROPERTY"},
+  {id:"blackmarket", icon:"🕵️", label:"MARKET"},
+  {id:"prestige",    icon:"⚡", label:"PRESTIGE"},
+  {id:"leaderboard", icon:"🏆", label:"LEADERBOARD"},
 ];
 
 function Game({initialPlayer,onLogout}) {
@@ -1141,7 +1406,12 @@ function Game({initialPlayer,onLogout}) {
   }
 
   function handleCrime({success,nerveCost,cash,xp,rep}){
-    setPlayer(p=>lvlUp({...p,nerve:Math.max(0,p.nerve-nerveCost),cash:p.cash+cash,xp:p.xp+xp,reputation:Math.max(0,p.reputation+rep),crimeStats:{total:(p.crimeStats?.total||0)+1,success:(p.crimeStats?.success||0)+(success?1:0)}}));
+    setPlayer(p=>{
+      const prestige=getPrestige(p.prestigeTier||0);
+      const cashMult=prestige?.cashMult||1;
+      const xpMult=prestige?.xpMult||1;
+      return lvlUp({...p,nerve:Math.max(0,p.nerve-nerveCost),cash:p.cash+Math.floor(cash*cashMult),xp:p.xp+Math.floor(xp*xpMult),reputation:Math.max(0,p.reputation+rep),crimeStats:{total:(p.crimeStats?.total||0)+1,success:(p.crimeStats?.success||0)+(success?1:0)}});
+    });
   }
 
   function handleCombat({won,cash,xp,rep,healthLost,energyCost,isPvp,targetName}){
@@ -1155,7 +1425,6 @@ function Game({initialPlayer,onLogout}) {
         wins:p.wins+(won?1:0),
         losses:p.losses+(won?0:1),
       };
-      // If attacker lost PvP — they go to hospital for 3 mins, health tanked
       if(isPvp&&!won){
         u.inHospitalUntil=Date.now()+3*60000;
         u.health=Math.max(1,Math.floor(p.health*0.25));
@@ -1190,7 +1459,39 @@ function Game({initialPlayer,onLogout}) {
   function handleLeave(){setPlayer(p=>({...p,syndicate:null}));notify("🚪 Left syndicate");}
   function handleContribute(a){setPlayer(p=>({...p,cash:p.cash-a}));notify(`✅ Contributed $${a.toLocaleString()}`);}
 
-  // Called from leaderboard — navigate to combat with target pre-loaded
+  // ── Property handlers ──────────────────────────────────────
+  function handleBuyProperty(prop){
+    if(player.cash<prop.price)return notify("❌ Not enough cash");
+    setPlayer(p=>({
+      ...p,
+      cash:p.cash-prop.price,
+      properties:{...p.properties,[prop.id]:(p.properties?.[prop.id]||0)+1},
+    }));
+    notify(`✅ PURCHASED ${prop.name} — earning +$${prop.incomePerHour.toLocaleString()}/hr`);
+  }
+
+  function handleCollect(amount){
+    const prestige=getPrestige(player.prestigeTier||0);
+    const mult=prestige?.cashMult||1;
+    const total=Math.floor(amount*mult);
+    setPlayer(p=>({...p,cash:p.cash+total,lastPropertyCollect:Date.now()}));
+    notify(`✅ +$${total.toLocaleString()} COLLECTED${mult>1?" (×"+mult+" prestige bonus)":""}`);
+  }
+
+  // ── Prestige handler ───────────────────────────────────────
+  function handlePrestige(tierData){
+    setPlayer(p=>({
+      ...p,
+      level:1,
+      xp:0,
+      prestigeTier:tierData.tier,
+      prestigeCount:(p.prestigeCount||0)+1,
+      statPoints:0,
+      // stats, cash, inventory, properties, syndicate all preserved
+    }));
+    notify(`⚡ PRESTIGE UNLOCKED — You are now ${tierData.label}!`);
+  }
+
   function handleAttackFromLB(target){
     setPvpInitTarget(target);
     setPage("combat");
@@ -1206,6 +1507,7 @@ function Game({initialPlayer,onLogout}) {
         <div style={{display:"flex",alignItems:"center",gap:10}}>
           <span style={{color:C.red,fontSize:14,fontWeight:900,letterSpacing:3,textShadow:`0 0 15px ${C.red}88`}}>SHADOW DOMINION</span>
           {player.syndicate&&<span style={S.badge(C.purple)}>🏴 {player.syndicate}</span>}
+          {player.prestigeTier>0&&<span style={S.badge(getPrestige(player.prestigeTier)?.color||C.muted)}>{getPrestige(player.prestigeTier)?.label}</span>}
         </div>
         <div style={{display:"flex",gap:6,alignItems:"center"}}>
           <span style={{color:C.muted,fontSize:10}}>👤 {player.name}</span>
@@ -1235,7 +1537,7 @@ function Game({initialPlayer,onLogout}) {
 
       {/* ICON NAV */}
       <div style={S.navBar}>
-        {NAV.map(n=>(<div key={n.id} style={S.nav(page===n.id)} onClick={()=>{if(n.id!=="combat")setPvpInitTarget(null);setPage(n.id);}} >
+        {NAV.map(n=>(<div key={n.id} style={S.nav(page===n.id)} onClick={()=>{if(n.id!=="combat")setPvpInitTarget(null);setPage(n.id);}}>
           <span style={{fontSize:18}}>{n.icon}</span>
           <span>{n.label}</span>
         </div>))}
@@ -1243,13 +1545,16 @@ function Game({initialPlayer,onLogout}) {
 
       {/* CONTENT */}
       <div style={{flex:1,padding:14,overflowY:"auto",maxWidth:860,width:"100%",margin:"0 auto"}}>
-        {page==="profile"    &&<ProfilePage    player={player} onStatUp={handleStatUp}/>}
-        {page==="crimes"     &&<CrimesPage     player={player} onCrime={handleCrime}/>}
-        {page==="combat"     &&<CombatPage     player={player} onCombat={handleCombat} initTarget={pvpInitTarget}/>}
-        {page==="gym"        &&<GymPage        player={player} onTrain={handleTrain}/>}
-        {page==="inventory"  &&<InventoryPage  player={player} onBuy={handleBuy} onEquip={handleEquip}/>}
-        {page==="syndicates" &&<SyndicatesPage player={player} onCreate={handleCreate} onJoin={handleJoin} onLeave={handleLeave} onContribute={handleContribute}/>}
-        {page==="leaderboard"&&<LeaderboardPage player={player} onAttackFromLB={handleAttackFromLB}/>}
+        {page==="profile"     &&<ProfilePage     player={player} onStatUp={handleStatUp}/>}
+        {page==="crimes"      &&<CrimesPage      player={player} onCrime={handleCrime}/>}
+        {page==="combat"      &&<CombatPage      player={player} onCombat={handleCombat} initTarget={pvpInitTarget}/>}
+        {page==="gym"         &&<GymPage         player={player} onTrain={handleTrain}/>}
+        {page==="inventory"   &&<InventoryPage   player={player} onBuy={handleBuy} onEquip={handleEquip}/>}
+        {page==="syndicates"  &&<SyndicatesPage  player={player} onCreate={handleCreate} onJoin={handleJoin} onLeave={handleLeave} onContribute={handleContribute}/>}
+        {page==="properties"  &&<PropertiesPage  player={player} onBuyProperty={handleBuyProperty} onCollect={handleCollect}/>}
+        {page==="blackmarket" &&<BlackMarketPage player={player} onBuy={handleBuy}/>}
+        {page==="prestige"    &&<PrestigePage    player={player} onPrestige={handlePrestige}/>}
+        {page==="leaderboard" &&<LeaderboardPage player={player} onAttackFromLB={handleAttackFromLB}/>}
       </div>
     </div>
   </div>);
