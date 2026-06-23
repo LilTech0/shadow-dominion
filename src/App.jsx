@@ -110,6 +110,7 @@ function createPlayer(name,username) {
     properties:{}, lastPropertyCollect:Date.now(),
     prestigeTier:0, prestigeCount:0,
     bmSeed:Date.now(),
+    notifications:[], notifUnread:0,
   };
 }
 
@@ -134,6 +135,33 @@ function getDailyBMItems(seed) {
     price: Math.floor(item.basePrice*(0.7+rng(60)/100)),
     stock: 1+rng(3),
   }));
+}
+
+// ── NOTIFICATION HELPERS ─────────────────────────────────────
+const NOTIF_TYPES = {
+  combat:  { icon:"⚔️",  color:"#e8001e" },
+  crime:   { icon:"🔪",  color:"#ff8c00" },
+  income:  { icon:"💰",  color:"#ffd700" },
+  level:   { icon:"🆙",  color:"#9b6dff" },
+  prestige:{ icon:"⚡",  color:"#e8001e" },
+  system:  { icon:"📢",  color:"#4d9fff" },
+  reward:  { icon:"🎁",  color:"#ffd700" },
+  buy:     { icon:"🛒",  color:"#00e87a" },
+};
+function makeNotif(type, text) {
+  return { id: Date.now()+Math.random(), type, text, ts: Date.now(), read: false };
+}
+function addNotif(player, type, text) {
+  const n = makeNotif(type, text);
+  const notifications = [n, ...(player.notifications||[])].slice(0, 100);
+  return { ...player, notifications, notifUnread: (player.notifUnread||0)+1 };
+}
+function tsAgo(ts) {
+  const s = Math.floor((Date.now()-ts)/1000);
+  if(s<60) return s+"s ago";
+  if(s<3600) return Math.floor(s/60)+"m ago";
+  if(s<86400) return Math.floor(s/3600)+"h ago";
+  return Math.floor(s/86400)+"d ago";
 }
 
 function createEnemy(playerLevel) {
@@ -407,10 +435,10 @@ function CrimesPage({player,onCrime}) {
     const chance=Math.min(95,Math.max(5,crime.baseChance+Math.floor(player.level*1.5)+player.level+eb-crime.difficulty));
     if(Math.random()*100<=chance){
       const reward=Math.floor(crime.baseReward*(0.8+Math.random()*0.4));
-      onCrime({success:true,nerveCost:crime.nerve,cash:reward,xp:crime.xp,rep:1});
+      onCrime({success:true,nerveCost:crime.nerve,cash:reward,xp:crime.xp,rep:1,crimeName:crime.name});
       setLog(l=>[{t:`✅ ${crime.name} — +$${reward.toLocaleString()} | +${crime.xp}xp | +1 REP`,g:true},...l.slice(0,29)]);
     } else {
-      onCrime({success:false,nerveCost:crime.nerve,cash:0,xp:Math.floor(crime.xp*0.1),rep:-1});
+      onCrime({success:false,nerveCost:crime.nerve,cash:0,xp:Math.floor(crime.xp*0.1),rep:-1,crimeName:crime.name});
       setLog(l=>[{t:`❌ BUSTED — ${crime.name} | -1 REP`,g:false},...l.slice(0,29)]);
     }
   }
@@ -1094,9 +1122,217 @@ function PrestigePage({player,onPrestige}) {
 }
 
 // ============================================================
+// NOTIFICATION DRAWER
+// ============================================================
+function NotifDrawer({player, onClose, onMarkAll}) {
+  const [filter, setFilter] = useState("all");
+  const notifs = player.notifications||[];
+  const filters = ["all","combat","crime","income","level","system","reward","buy"];
+  const visible = filter==="all" ? notifs : notifs.filter(n=>n.type===filter);
+
+  return(
+    <div style={{position:"fixed",inset:0,background:"#000b",zIndex:10001,display:"flex",flexDirection:"column",justifyContent:"flex-end"}} onClick={onClose}>
+      <div style={{background:C.card,border:`1px solid ${C.border2}`,borderRadius:"12px 12px 0 0",maxHeight:"75vh",display:"flex",flexDirection:"column"}} onClick={e=>e.stopPropagation()}>
+        {/* Header */}
+        <div style={{padding:"16px 16px 10px",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center",flexShrink:0}}>
+          <div style={{color:"#fff",fontWeight:900,fontSize:15,letterSpacing:2}}>🔔 NOTIFICATIONS</div>
+          <div style={{display:"flex",gap:8,alignItems:"center"}}>
+            {(player.notifUnread||0)>0&&<button style={{...S.btn(C.muted,"#14141e"),padding:"4px 10px",fontSize:9}} onClick={onMarkAll}>MARK ALL READ</button>}
+            <button style={{...S.btn(C.muted,"#14141e"),padding:"4px 10px",fontSize:9}} onClick={onClose}>✕</button>
+          </div>
+        </div>
+        {/* Filter chips */}
+        <div style={{display:"flex",gap:6,padding:"8px 16px",overflowX:"auto",flexShrink:0,borderBottom:`1px solid ${C.border}`}}>
+          {filters.map(f=>{
+            const meta=NOTIF_TYPES[f];
+            return(<button key={f} onClick={()=>setFilter(f)} style={{padding:"4px 10px",borderRadius:10,border:`1px solid ${filter===f?(meta?.color||C.blue):C.border}`,background:filter===f?(meta?.color||C.blue)+"22":"transparent",color:filter===f?(meta?.color||C.blue):C.muted,fontSize:9,letterSpacing:1,cursor:"pointer",whiteSpace:"nowrap",fontWeight:filter===f?700:400}}>
+              {meta?.icon||"•"} {f.toUpperCase()}
+            </button>);
+          })}
+        </div>
+        {/* List */}
+        <div style={{overflowY:"auto",flex:1}}>
+          {visible.length===0&&<div style={{padding:24,color:C.dim,textAlign:"center",fontSize:12}}>No notifications yet.</div>}
+          {visible.map(n=>{
+            const meta=NOTIF_TYPES[n.type]||NOTIF_TYPES.system;
+            return(
+              <div key={n.id} style={{padding:"12px 16px",borderBottom:`1px solid ${C.border}`,background:n.read?"transparent":"#0d0d18",display:"flex",gap:12,alignItems:"flex-start"}}>
+                <span style={{fontSize:18,flexShrink:0}}>{meta.icon}</span>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{color:n.read?"#aaa":"#fff",fontSize:12,lineHeight:1.5}}>{n.text}</div>
+                  <div style={{color:C.muted,fontSize:9,marginTop:3}}>{tsAgo(n.ts)}</div>
+                </div>
+                {!n.read&&<div style={{width:6,height:6,borderRadius:"50%",background:meta.color,flexShrink:0,marginTop:4}}/>}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// FEED PAGE
+// ============================================================
+function FeedPage({player, onMarkAll}) {
+  const [filter, setFilter] = useState("all");
+  const notifs = player.notifications||[];
+  const filters = ["all","combat","crime","income","level","system","reward","buy"];
+  const visible = filter==="all" ? notifs : notifs.filter(n=>n.type===filter);
+
+  return(<div>
+    <div style={S.card({borderColor:C.blue+"44"})}>
+      <div style={S.ct}>📋 ACTIVITY FEED</div>
+      <div style={{color:C.muted,fontSize:11,marginBottom:10}}>Your full event history — attacks, crimes, income and more.</div>
+      {(player.notifUnread||0)>0&&<button style={S.btn(C.muted,"#14141e")} onClick={onMarkAll}>✅ Mark all read</button>}
+    </div>
+
+    {/* Filter chips */}
+    <div style={{display:"flex",gap:6,marginBottom:12,overflowX:"auto",paddingBottom:4}}>
+      {filters.map(f=>{
+        const meta=NOTIF_TYPES[f];
+        return(<button key={f} onClick={()=>setFilter(f)} style={{padding:"5px 12px",borderRadius:10,border:`1px solid ${filter===f?(meta?.color||C.blue):C.border}`,background:filter===f?(meta?.color||C.blue)+"22":"transparent",color:filter===f?(meta?.color||C.blue):C.muted,fontSize:9,letterSpacing:1,cursor:"pointer",whiteSpace:"nowrap",fontWeight:filter===f?700:400}}>
+          {meta?.icon||"•"} {f.toUpperCase()}
+        </button>);
+      })}
+    </div>
+
+    {visible.length===0&&<div style={{...S.card(),color:C.dim,textAlign:"center"}}>No events yet. Go commit some crimes.</div>}
+    {visible.map(n=>{
+      const meta=NOTIF_TYPES[n.type]||NOTIF_TYPES.system;
+      return(
+        <div key={n.id} style={{...S.card({background:n.read?"#0c0c14":"#0f0f1c",borderColor:n.read?C.border:meta.color+"33"}),marginBottom:8,padding:"12px 14px"}}>
+          <div style={{display:"flex",gap:10,alignItems:"flex-start"}}>
+            <span style={{fontSize:20,flexShrink:0}}>{meta.icon}</span>
+            <div style={{flex:1}}>
+              <div style={{color:n.read?"#ccc":"#fff",fontSize:12,lineHeight:1.5,marginBottom:3}}>{n.text}</div>
+              <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                <span style={{...S.badge(meta.color),fontSize:8}}>{n.type.toUpperCase()}</span>
+                <span style={{color:C.muted,fontSize:9}}>{tsAgo(n.ts)}</span>
+                {!n.read&&<span style={{...S.badge(meta.color),fontSize:8}}>NEW</span>}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    })}
+  </div>);
+}
+
+// ============================================================
+// PLAYER PROFILE MODAL
+// ============================================================
+function PlayerProfileModal({target, viewer, onClose, onAttack}) {
+  const isMe = target.username === viewer.username;
+  const prestige = getPrestige(target.prestigeTier||0);
+  const wpn = ITEMS.find(i=>i.id===target.equippedWeapon);
+  const arm = ITEMS.find(i=>i.id===target.equippedArmor);
+  const wr = target.wins+target.losses>0
+    ? ((target.wins/(target.wins+target.losses))*100).toFixed(0)+"%" : "—";
+  const inHosp = target.inHospitalUntil && target.inHospitalUntil > Date.now();
+  const hospLeft = inHosp ? Math.ceil((target.inHospitalUntil-Date.now())/60000) : 0;
+  const propCount = Object.values(target.properties||{}).reduce((s,v)=>s+(v||0),0);
+  const viewerInHosp = viewer.inHospitalUntil && viewer.inHospitalUntil > Date.now();
+
+  return(
+    <div style={{position:"fixed",inset:0,background:"#000c",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:10000}} onClick={onClose}>
+      <div
+        style={{background:C.card,border:`1px solid ${C.border2}`,borderRadius:"12px 12px 0 0",padding:24,width:"100%",maxWidth:500,maxHeight:"85vh",overflowY:"auto"}}
+        onClick={e=>e.stopPropagation()}
+      >
+        {/* Header */}
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16}}>
+          <div>
+            <div style={{color:"#fff",fontSize:20,fontWeight:900,letterSpacing:2,marginBottom:2}}>{target.name}</div>
+            <div style={{color:C.muted,fontSize:11,marginBottom:6}}>@{target.username}</div>
+            <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+              {prestige&&<span style={S.badge(prestige.color)}>{prestige.label} T{target.prestigeTier}</span>}
+              {target.syndicate&&<span style={S.badge(C.purple)}>🏴 {target.syndicate}</span>}
+              {inHosp&&<span style={S.badge(C.blue)}>🏥 hospital {hospLeft}m</span>}
+              {isMe&&<span style={S.badge(C.green)}>YOU</span>}
+            </div>
+          </div>
+          <div style={{textAlign:"right"}}>
+            <div style={{color:C.red,fontSize:26,fontWeight:900,lineHeight:1}}>LVL {target.level}</div>
+            <div style={{color:C.orange,fontSize:12,marginTop:2}}>⭐ {target.reputation} REP</div>
+          </div>
+        </div>
+
+        {/* Stats grid */}
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:14}}>
+          {[
+            ["⚔️ ATK", calcAttack(target), C.red],
+            ["🛡️ DEF", calcDefense(target), C.blue],
+            ["❤️ HP",  target.health,        C.green],
+            ["💪 STR", target.strength,      "#ff6e6e"],
+            ["🧲 DEF", target.defense,       "#6eb4ff"],
+            ["⚡ DEX", target.dexterity,     C.orange],
+          ].map(([l,v,c])=>(
+            <div key={l} style={{background:"#0a0a14",border:`1px solid ${C.border}`,borderRadius:6,padding:"10px 12px",textAlign:"center"}}>
+              <div style={{color:c,fontWeight:900,fontSize:15}}>{typeof v==="number"?Math.floor(v):v}</div>
+              <div style={{color:C.muted,fontSize:9,marginTop:2}}>{l}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Record + cash */}
+        <div style={S.card({marginBottom:10})}>
+          <div style={{display:"flex",gap:20,flexWrap:"wrap"}}>
+            {[
+              ["WINS",   target.wins,   C.green],
+              ["LOSSES", target.losses, C.red],
+              ["W/L",    wr,            C.orange],
+              ["CRIMES", target.crimeStats?.total||0, C.muted],
+              ["PROPS",  propCount,     C.gold],
+            ].map(([l,v,c])=>(
+              <div key={l}>
+                <div style={{color:c,fontWeight:900,fontSize:15}}>{v}</div>
+                <div style={{color:C.muted,fontSize:9}}>{l}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Loadout */}
+        <div style={S.card({marginBottom:14})}>
+          <div style={S.ct}>🎒 LOADOUT</div>
+          <div style={{display:"flex",gap:20}}>
+            <div>
+              <div style={{color:C.muted,fontSize:9,marginBottom:3}}>WEAPON</div>
+              <div style={{color:wpn?C.orange:"#333",fontWeight:700,fontSize:12}}>{wpn?.name||"Bare Hands"}</div>
+              {wpn&&<div style={{color:C.muted,fontSize:10}}>+{wpn.weaponDmg} ATK</div>}
+            </div>
+            <div>
+              <div style={{color:C.muted,fontSize:9,marginBottom:3}}>ARMOR</div>
+              <div style={{color:arm?C.blue:"#333",fontWeight:700,fontSize:12}}>{arm?.name||"None"}</div>
+              {arm&&<div style={{color:C.muted,fontSize:10}}>+{arm.armorRating} DEF</div>}
+            </div>
+          </div>
+        </div>
+
+        {/* Action buttons */}
+        <div style={{display:"flex",gap:8}}>
+          {!isMe&&(
+            <button
+              style={{...S.btnF(viewerInHosp?C.muted:C.red, viewerInHosp?C.dim:C.redBg), opacity:viewerInHosp?0.4:1, cursor:viewerInHosp?"not-allowed":"pointer", flex:2}}
+              onClick={()=>{ if(!viewerInHosp){onAttack(target); onClose();} }}
+              disabled={viewerInHosp}
+            >
+              {viewerInHosp?"🏥 HOSPITALIZED":"⚔️ CHALLENGE"}
+            </button>
+          )}
+          <button style={{...S.btnF(C.muted,"#14141e"), flex:1}} onClick={onClose}>CLOSE</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
 // LEADERBOARD PAGE
 // ============================================================
-function LeaderboardPage({player,onAttackFromLB}) {
+function LeaderboardPage({player,onAttackFromLB,onViewProfile}) {
   const [tab,setTab]=useState("players");
   const accounts=getAccounts();
   const players=Object.values(accounts).map(a=>a.player).sort((a,b)=>b.level-a.level||b.reputation-a.reputation);
@@ -1111,35 +1347,35 @@ function LeaderboardPage({player,onAttackFromLB}) {
         Click <span style={{color:C.red,fontWeight:700}}>⚔️ ATTACK</span> to challenge any player — takes you straight to combat
         {inHosp&&<span style={{color:C.blue,marginLeft:8}}>· 🏥 You are hospitalized</span>}
       </div>
-      <div style={{display:"grid",gridTemplateColumns:"28px 1fr 40px 45px 55px 64px",gap:6,color:C.dim,fontSize:9,letterSpacing:1,marginBottom:8,padding:"0 4px"}}>
+      <div style={{display:"grid",gridTemplateColumns:"28px 1fr 40px 45px 55px 96px",gap:6,color:C.dim,fontSize:9,letterSpacing:1,marginBottom:8,padding:"0 4px"}}>
         <span>#</span><span>NAME</span><span>LVL</span><span>REP</span><span>CASH</span><span></span>
       </div>
       {players.slice(0,100).map((p,i)=>{
         const isMe=p.username===player.username;
         const targetInHosp=p.inHospitalUntil&&p.inHospitalUntil>Date.now();
         return(
-          <div key={p.username} style={{display:"grid",gridTemplateColumns:"28px 1fr 40px 45px 55px 64px",gap:6,padding:"8px 4px",borderBottom:`1px solid ${C.border}`,background:isMe?C.redBg:"transparent",borderRadius:2,alignItems:"center"}}>
+          <div key={p.username} style={{display:"grid",gridTemplateColumns:"28px 1fr 40px 45px 55px 96px",gap:6,padding:"8px 4px",borderBottom:`1px solid ${C.border}`,background:isMe?C.redBg:"transparent",borderRadius:2,alignItems:"center"}}>
             <span style={{color:i===0?C.gold:i===1?"#c0c0c0":i===2?"#cd7f32":C.muted,fontWeight:i<3?900:400,fontSize:i<3?13:11}}>
               {i===0?"🥇":i===1?"🥈":i===2?"🥉":i+1}
             </span>
-            <div>
-              <div style={{color:isMe?C.red:"#fff",fontWeight:700,fontSize:11}}>{p.name}{isMe&&" 👈"}</div>
+            <div style={{cursor:"pointer"}} onClick={()=>onViewProfile(p)}>
+              <div style={{color:isMe?C.red:C.blue,fontWeight:700,fontSize:11,textDecoration:"underline",textDecorationStyle:"dotted"}}>{p.name}{isMe&&" 👈"}</div>
               {targetInHosp&&<div style={{fontSize:9,color:C.blue}}>🏥 hospitalized</div>}
             </div>
             <span style={{color:C.purple,fontWeight:700,fontSize:11}}>{p.level}</span>
             <span style={{color:C.orange,fontSize:11}}>{p.reputation}</span>
             <span style={{color:C.green,fontSize:10}}>${Math.floor(p.cash/1000)}k</span>
-            {isMe
-              ? <span style={{color:C.dim,fontSize:9,textAlign:"center"}}>YOU</span>
-              : <button
-                  style={{...S.btn(inHosp?C.muted:C.red,inHosp?C.dim:C.redBg),padding:"4px 8px",fontSize:10,opacity:inHosp?0.4:1,cursor:inHosp?"not-allowed":"pointer",width:"100%"}}
-                  onClick={()=>!inHosp&&onAttackFromLB(p)}
-                  disabled={inHosp}
-                  title={inHosp?"You are hospitalized — cannot attack":"Attack "+p.name}
-                >
-                  ⚔️ ATK
-                </button>
-            }
+            <div style={{display:"flex",gap:4}}>
+              {!isMe&&<button
+                style={{...S.btn(inHosp?C.muted:C.red,inHosp?C.dim:C.redBg),padding:"4px 6px",fontSize:9,opacity:inHosp?0.4:1,cursor:inHosp?"not-allowed":"pointer",flex:1}}
+                onClick={()=>!inHosp&&onAttackFromLB(p)}
+                disabled={inHosp}
+              >⚔️</button>}
+              <button
+                style={{...S.btn(C.blue,"#060e1a"),padding:"4px 6px",fontSize:9,cursor:"pointer",flex:1}}
+                onClick={()=>onViewProfile(p)}
+              >👤</button>
+            </div>
           </div>
         );
       })}
@@ -1353,6 +1589,7 @@ const NAV=[
   {id:"properties",  icon:"🏠", label:"PROPERTY"},
   {id:"blackmarket", icon:"🕵️", label:"MARKET"},
   {id:"prestige",    icon:"⚡", label:"PRESTIGE"},
+  {id:"feed",        icon:"📋", label:"FEED"},
   {id:"leaderboard", icon:"🏆", label:"LEADERBOARD"},
 ];
 
@@ -1362,7 +1599,14 @@ function Game({initialPlayer,onLogout}) {
   const [toast,setToast]=useState(null);
   const [showDaily,setShowDaily]=useState(!initialPlayer.loginRewardClaimed);
   const [pvpInitTarget,setPvpInitTarget]=useState(null);
+  const [viewedProfile,setViewedProfile]=useState(null);
+  const [showNotifs,setShowNotifs]=useState(false);
   const notify=useCallback(msg=>setToast(msg),[]);
+
+  // helper — add a notification to player state
+  const pushNotif=useCallback((type,text)=>{
+    setPlayer(p=>addNotif(p,type,text));
+  },[]);
 
   // Regen tick
   useEffect(()=>{
@@ -1394,23 +1638,35 @@ function Game({initialPlayer,onLogout}) {
     let u={...p};
     while(u.xp>=XP_FOR_LEVEL(u.level+1)){
       u.xp-=XP_FOR_LEVEL(u.level+1);u.level+=1;u.statPoints=(u.statPoints||0)+3;
+      u=addNotif(u,"level",`🆙 Level Up! Now Level ${u.level} — +3 stat points to spend`);
       setTimeout(()=>notify(`🆙 LEVEL UP! Now Level ${u.level}! +3 stat points`),100);
     }
     return u;
   }
 
   function handleDaily(reward){
-    setPlayer(p=>{let u={...p,cash:p.cash+reward.cash,loginRewardClaimed:true};if(reward.itemId&&!p.inventory.includes(reward.itemId))u.inventory=[...p.inventory,reward.itemId];return u;});
+    const itemName=reward.itemId?ITEMS.find(i=>i.id===reward.itemId)?.name:"";
+    setPlayer(p=>{
+      let u={...p,cash:p.cash+reward.cash,loginRewardClaimed:true};
+      if(reward.itemId&&!p.inventory.includes(reward.itemId))u.inventory=[...p.inventory,reward.itemId];
+      return addNotif(u,"reward",`Day ${p.loginStreak} login reward claimed: +$${reward.cash.toLocaleString()}${itemName?" + "+itemName:""}`);
+    });
     notify(`🎁 Day ${player.loginStreak} reward: +$${reward.cash.toLocaleString()}${reward.itemId?" + "+ITEMS.find(i=>i.id===reward.itemId)?.name:""}`);
     setShowDaily(false);
   }
 
-  function handleCrime({success,nerveCost,cash,xp,rep}){
+  function handleCrime({success,nerveCost,cash,xp,rep,crimeName}){
     setPlayer(p=>{
       const prestige=getPrestige(p.prestigeTier||0);
       const cashMult=prestige?.cashMult||1;
       const xpMult=prestige?.xpMult||1;
-      return lvlUp({...p,nerve:Math.max(0,p.nerve-nerveCost),cash:p.cash+Math.floor(cash*cashMult),xp:p.xp+Math.floor(xp*xpMult),reputation:Math.max(0,p.reputation+rep),crimeStats:{total:(p.crimeStats?.total||0)+1,success:(p.crimeStats?.success||0)+(success?1:0)}});
+      const finalCash=Math.floor(cash*cashMult);
+      const finalXp=Math.floor(xp*xpMult);
+      let u=lvlUp({...p,nerve:Math.max(0,p.nerve-nerveCost),cash:p.cash+finalCash,xp:p.xp+finalXp,reputation:Math.max(0,p.reputation+rep),crimeStats:{total:(p.crimeStats?.total||0)+1,success:(p.crimeStats?.success||0)+(success?1:0)}});
+      const txt=success
+        ?`✅ ${crimeName||"Crime"} succeeded — +$${finalCash.toLocaleString()} | +${finalXp}xp | +1 REP`
+        :`❌ BUSTED on ${crimeName||"crime"} — -1 REP`;
+      return addNotif(u,"crime",txt);
     });
   }
 
@@ -1429,7 +1685,13 @@ function Game({initialPlayer,onLogout}) {
         u.inHospitalUntil=Date.now()+3*60000;
         u.health=Math.max(1,Math.floor(p.health*0.25));
       }
-      return lvlUp(u);
+      u=lvlUp(u);
+      let txt;
+      if(isPvp&&won) txt=`🏆 PvP Victory vs ${targetName} — +3 REP`;
+      else if(isPvp&&!won) txt=`💀 Defeated by ${targetName} in PvP — hospitalized 3 min`;
+      else if(won) txt=`🏆 Street fight won — +$${cash.toLocaleString()} | +${xp}xp`;
+      else txt=`💀 Street fight lost — no rewards`;
+      return addNotif(u,"combat",txt);
     });
     if(won&&isPvp) notify(`🏆 DEFEATED ${targetName}! +3 REP`);
     else if(!won&&isPvp) notify(`💀 DEFEATED by ${targetName} — sent to hospital for 3 min!`);
@@ -1444,7 +1706,7 @@ function Game({initialPlayer,onLogout}) {
   function handleBuy(item){
     if(player.cash<item.price)return notify("❌ Not enough cash");
     if(player.inventory.includes(item.id))return notify("❌ Already owned");
-    setPlayer(p=>({...p,cash:p.cash-item.price,inventory:[...p.inventory,item.id]}));
+    setPlayer(p=>addNotif({...p,cash:p.cash-item.price,inventory:[...p.inventory,item.id]},"buy",`Purchased ${item.name} for $${item.price.toLocaleString()}`));
     notify(`✅ BOUGHT ${item.name}`);
   }
 
@@ -1455,131 +1717,4 @@ function Game({initialPlayer,onLogout}) {
 
   function handleStatUp(stat){if(!player.statPoints)return;setPlayer(p=>({...p,[stat]:p[stat]+1,statPoints:p.statPoints-1}));}
   function handleCreate(s){setPlayer(p=>({...p,cash:p.cash-SYNDICATE_COST,syndicate:s.name}));notify(`🏴 FOUNDED: ${s.name}`);}
-  function handleJoin(s){setPlayer(p=>({...p,syndicate:s.name}));notify(`✅ JOINED ${s.name}`);}
-  function handleLeave(){setPlayer(p=>({...p,syndicate:null}));notify("🚪 Left syndicate");}
-  function handleContribute(a){setPlayer(p=>({...p,cash:p.cash-a}));notify(`✅ Contributed $${a.toLocaleString()}`);}
-
-  // ── Property handlers ──────────────────────────────────────
-  function handleBuyProperty(prop){
-    if(player.cash<prop.price)return notify("❌ Not enough cash");
-    setPlayer(p=>({
-      ...p,
-      cash:p.cash-prop.price,
-      properties:{...p.properties,[prop.id]:(p.properties?.[prop.id]||0)+1},
-    }));
-    notify(`✅ PURCHASED ${prop.name} — earning +$${prop.incomePerHour.toLocaleString()}/hr`);
-  }
-
-  function handleCollect(amount){
-    const prestige=getPrestige(player.prestigeTier||0);
-    const mult=prestige?.cashMult||1;
-    const total=Math.floor(amount*mult);
-    setPlayer(p=>({...p,cash:p.cash+total,lastPropertyCollect:Date.now()}));
-    notify(`✅ +$${total.toLocaleString()} COLLECTED${mult>1?" (×"+mult+" prestige bonus)":""}`);
-  }
-
-  // ── Prestige handler ───────────────────────────────────────
-  function handlePrestige(tierData){
-    setPlayer(p=>({
-      ...p,
-      level:1,
-      xp:0,
-      prestigeTier:tierData.tier,
-      prestigeCount:(p.prestigeCount||0)+1,
-      statPoints:0,
-      // stats, cash, inventory, properties, syndicate all preserved
-    }));
-    notify(`⚡ PRESTIGE UNLOCKED — You are now ${tierData.label}!`);
-  }
-
-  function handleAttackFromLB(target){
-    setPvpInitTarget(target);
-    setPage("combat");
-  }
-
-  return(<div style={S.app}>
-    {toast&&<Toast msg={toast} onClose={()=>setToast(null)}/>}
-    {showDaily&&!player.loginRewardClaimed&&<DailyModal player={player} onClaim={handleDaily} onClose={()=>setShowDaily(false)}/>}
-    <div style={{display:"flex",flexDirection:"column",minHeight:"100vh"}}>
-
-      {/* TOP BAR */}
-      <div style={S.topBar}>
-        <div style={{display:"flex",alignItems:"center",gap:10}}>
-          <span style={{color:C.red,fontSize:14,fontWeight:900,letterSpacing:3,textShadow:`0 0 15px ${C.red}88`}}>SHADOW DOMINION</span>
-          {player.syndicate&&<span style={S.badge(C.purple)}>🏴 {player.syndicate}</span>}
-          {player.prestigeTier>0&&<span style={S.badge(getPrestige(player.prestigeTier)?.color||C.muted)}>{getPrestige(player.prestigeTier)?.label}</span>}
-        </div>
-        <div style={{display:"flex",gap:6,alignItems:"center"}}>
-          <span style={{color:C.muted,fontSize:10}}>👤 {player.name}</span>
-          <span style={{color:C.green,fontSize:10,fontWeight:700}}>${player.cash.toLocaleString()}</span>
-          {!player.loginRewardClaimed&&<button style={{...S.btn(C.gold,C.goldBg),padding:"3px 10px",fontSize:9}} onClick={()=>setShowDaily(true)}>🎁</button>}
-          <button onClick={onLogout} style={{...S.btn(C.muted,"#14141e"),padding:"3px 10px",fontSize:9}}>LOGOUT</button>
-        </div>
-      </div>
-
-      {/* STAT BARS */}
-      <div style={S.statBar}>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"5px 20px",marginBottom:6}}>
-          <TopStatBar label="⚡ ENERGY" val={player.energy} max={MAX_ENERGY} color="#ff6600" regen="1/5min"/>
-          <TopStatBar label="❤️ HEALTH" val={player.health} max={MAX_HEALTH} color={C.green} regen="1/3min"/>
-        </div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"5px 20px",marginBottom:6}}>
-          <TopStatBar label="🧠 NERVE"  val={player.nerve}  max={MAX_NERVE}  color={C.blue}  regen="1/10min"/>
-          <div style={{display:"flex",gap:16,alignItems:"center",fontSize:10}}>
-            <span>LVL <span style={{color:C.gold,fontWeight:900,fontSize:13}}>{player.level}</span></span>
-            <span>⭐ <span style={{color:C.orange,fontWeight:900}}>{player.reputation.toLocaleString()}</span></span>
-            <span style={{color:C.muted}}>{player.wins}W/{player.losses}L</span>
-          </div>
-        </div>
-      </div>
-
-      <AnnouncementBanner/>
-
-      {/* ICON NAV */}
-      <div style={S.navBar}>
-        {NAV.map(n=>(<div key={n.id} style={S.nav(page===n.id)} onClick={()=>{if(n.id!=="combat")setPvpInitTarget(null);setPage(n.id);}}>
-          <span style={{fontSize:18}}>{n.icon}</span>
-          <span>{n.label}</span>
-        </div>))}
-      </div>
-
-      {/* CONTENT */}
-      <div style={{flex:1,padding:14,overflowY:"auto",maxWidth:860,width:"100%",margin:"0 auto"}}>
-        {page==="profile"     &&<ProfilePage     player={player} onStatUp={handleStatUp}/>}
-        {page==="crimes"      &&<CrimesPage      player={player} onCrime={handleCrime}/>}
-        {page==="combat"      &&<CombatPage      player={player} onCombat={handleCombat} initTarget={pvpInitTarget}/>}
-        {page==="gym"         &&<GymPage         player={player} onTrain={handleTrain}/>}
-        {page==="inventory"   &&<InventoryPage   player={player} onBuy={handleBuy} onEquip={handleEquip}/>}
-        {page==="syndicates"  &&<SyndicatesPage  player={player} onCreate={handleCreate} onJoin={handleJoin} onLeave={handleLeave} onContribute={handleContribute}/>}
-        {page==="properties"  &&<PropertiesPage  player={player} onBuyProperty={handleBuyProperty} onCollect={handleCollect}/>}
-        {page==="blackmarket" &&<BlackMarketPage player={player} onBuy={handleBuy}/>}
-        {page==="prestige"    &&<PrestigePage    player={player} onPrestige={handlePrestige}/>}
-        {page==="leaderboard" &&<LeaderboardPage player={player} onAttackFromLB={handleAttackFromLB}/>}
-      </div>
-    </div>
-  </div>);
-}
-
-// ============================================================
-// ROOT
-// ============================================================
-export default function App() {
-  const [player,setPlayer]=useState(null);
-  const [adminAuthed,setAdminAuthed]=useState(false);
-  const isAdmin=window.location.hash==="#admin";
-  if(isAdmin){
-    if(!adminAuthed)return<AdminLogin onLogin={()=>setAdminAuthed(true)}/>;
-    return<div style={S.app}>
-      <div style={{background:"#0f0a00",borderBottom:"1px solid #2a1a00",padding:"10px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-        <span style={{color:C.orange,fontSize:14,fontWeight:900,letterSpacing:3}}>⚙️ ADMIN — SHADOW DOMINION</span>
-        <button style={{...S.btn(C.muted,"#14141e"),padding:"4px 10px",fontSize:9}} onClick={()=>{setAdminAuthed(false);window.location.hash="";}}>LOGOUT</button>
-      </div>
-      <div style={{padding:14,maxWidth:860,margin:"0 auto"}}>
-        <AdminPage player={{username:"admin"}} notify={msg=>alert(msg)}/>
-      </div>
-    </div>;
-  }
-  return player
-    ? <Game initialPlayer={player} onLogout={()=>setPlayer(null)}/>
-    : <AuthPage onLogin={setPlayer}/>;
-}
+  function
