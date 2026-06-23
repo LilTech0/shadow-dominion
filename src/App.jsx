@@ -1718,3 +1718,118 @@ function Game({initialPlayer,onLogout}) {
   function handleStatUp(stat){if(!player.statPoints)return;setPlayer(p=>({...p,[stat]:p[stat]+1,statPoints:p.statPoints-1}));}
   function handleCreate(s){setPlayer(p=>({...p,cash:p.cash-SYNDICATE_COST,syndicate:s.name}));notify(`🏴 FOUNDED: ${s.name}`);}
   function handleJoin(s){setPlayer
+(p=>({...p,syndicate:s.name}));notify(`🏴 JOINED: ${s.name}`);}
+  function handleLeave(){setPlayer(p=>({...p,syndicate:null}));notify("Left syndicate.");}
+  function handleContribute(amt){setPlayer(p=>({...p,cash:p.cash-amt}));notify(`💰 Contributed $${amt.toLocaleString()}`);}
+
+  function handleBuyProperty(prop){
+    setPlayer(p=>addNotif({...p,cash:p.cash-prop.price,properties:{...p.properties,[prop.id]:(p.properties?.[prop.id]||0)+1}},"buy",`Purchased ${prop.name} for $${prop.price.toLocaleString()}`));
+    notify(`✅ BOUGHT ${prop.name}`);
+  }
+
+  function handleCollect(amount){
+    const prestige=getPrestige(player.prestigeTier||0);
+    const cashMult=prestige?.cashMult||1;
+    const final=Math.floor(amount*cashMult);
+    setPlayer(p=>addNotif({...p,cash:p.cash+final,lastPropertyCollect:Date.now()},"income",`Collected $${final.toLocaleString()} from properties`));
+    notify(`💰 COLLECTED $${final.toLocaleString()}`);
+  }
+
+  function handlePrestige(nextPrestige){
+    setPlayer(p=>{
+      let u={...p,level:1,xp:0,prestigeTier:nextPrestige.tier,prestigeCount:(p.prestigeCount||0)+1};
+      return addNotif(u,"prestige",`⚡ Prestiged to ${nextPrestige.label} (Tier ${nextPrestige.tier})`);
+    });
+    notify(`⚡ PRESTIGE UNLOCKED: ${nextPrestige.label}`);
+  }
+
+  function handleMarkAllRead(){
+    setPlayer(p=>({...p,notifications:(p.notifications||[]).map(n=>({...n,read:true})),notifUnread:0}));
+  }
+
+  function handleAttackFromLB(target){
+    setPvpInitTarget(target);
+    setPage("combat");
+  }
+
+  return(
+    <div style={{...S.app,display:"flex",flexDirection:"column",height:"100vh"}}>
+      {toast&&<Toast msg={toast} onClose={()=>setToast(null)}/>}
+      {showDaily&&<DailyModal player={player} onClaim={handleDaily} onClose={()=>setShowDaily(false)}/>}
+      {showNotifs&&<NotifDrawer player={player} onClose={()=>setShowNotifs(false)} onMarkAll={handleMarkAllRead}/>}
+      {viewedProfile&&<PlayerProfileModal target={viewedProfile} viewer={player} onClose={()=>setViewedProfile(null)} onAttack={t=>{setPvpInitTarget(t);setPage("combat");}}/>}
+
+      <div style={S.topBar}>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <span style={{color:C.red,fontWeight:900,letterSpacing:3,fontSize:14}}>SHADOW</span>
+          <span style={{color:C.muted,fontSize:9}}>|</span>
+          <span style={{color:"#fff",fontSize:11}}>{player.name}</span>
+          {player.prestigeTier>0&&<span style={S.badge(getPrestige(player.prestigeTier)?.color||C.muted)}>{getPrestige(player.prestigeTier)?.label}</span>}
+        </div>
+        <div style={{display:"flex",gap:8,alignItems:"center"}}>
+          <span style={{color:C.green,fontWeight:700,fontSize:12}}>${player.cash.toLocaleString()}</span>
+          <button style={{...S.btn(C.muted,"#14141e"),padding:"4px 10px",fontSize:9,position:"relative"}} onClick={()=>setShowNotifs(true)}>
+            🔔{(player.notifUnread||0)>0&&<span style={{position:"absolute",top:-4,right:-4,background:C.red,color:"#fff",borderRadius:"50%",fontSize:8,width:14,height:14,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900}}>{player.notifUnread>9?"9+":player.notifUnread}</span>}
+          </button>
+          <button style={{...S.btn(C.muted,"#14141e"),padding:"4px 10px",fontSize:9}} onClick={onLogout}>OUT</button>
+        </div>
+      </div>
+
+      <div style={S.statBar}>
+        <AnnouncementBanner/>
+        <div style={{display:"flex",flexDirection:"column",gap:5}}>
+          <TopStatBar label="ENERGY" val={player.energy} max={MAX_ENERGY} color={C.blue}   regen="5m"/>
+          <TopStatBar label="NERVE"  val={player.nerve}  max={MAX_NERVE}  color={C.orange} regen="10m"/>
+          <TopStatBar label="HEALTH" val={player.health} max={MAX_HEALTH} color={C.green}  regen="3m"/>
+        </div>
+      </div>
+
+      <div style={S.navBar}>
+        {NAV.map(n=>(
+          <div key={n.id} style={S.nav(page===n.id)} onClick={()=>{setPage(n.id);if(n.id!=="combat")setPvpInitTarget(null);}}>
+            <span style={{fontSize:14}}>{n.icon}</span>
+            <span>{n.label}</span>
+          </div>
+        ))}
+      </div>
+
+      <div style={{flex:1,overflowY:"auto",padding:"14px 12px"}}>
+        {page==="profile"    &&<ProfilePage    player={player} onStatUp={handleStatUp}/>}
+        {page==="crimes"     &&<CrimesPage     player={player} onCrime={handleCrime}/>}
+        {page==="combat"     &&<CombatPage     player={player} onCombat={handleCombat} initTarget={pvpInitTarget}/>}
+        {page==="gym"        &&<GymPage        player={player} onTrain={handleTrain}/>}
+        {page==="inventory"  &&<InventoryPage  player={player} onBuy={handleBuy} onEquip={handleEquip}/>}
+        {page==="syndicates" &&<SyndicatesPage player={player} onCreate={handleCreate} onJoin={handleJoin} onLeave={handleLeave} onContribute={handleContribute}/>}
+        {page==="properties" &&<PropertiesPage player={player} onBuyProperty={handleBuyProperty} onCollect={handleCollect}/>}
+        {page==="blackmarket"&&<BlackMarketPage player={player} onBuy={handleBuy}/>}
+        {page==="prestige"   &&<PrestigePage   player={player} onPrestige={handlePrestige}/>}
+        {page==="feed"       &&<FeedPage       player={player} onMarkAll={handleMarkAllRead}/>}
+        {page==="leaderboard"&&<LeaderboardPage player={player} onAttackFromLB={handleAttackFromLB} onViewProfile={setViewedProfile}/>}
+        {page==="admin"      &&<AdminPage      player={player} notify={notify}/>}
+      </div>
+    </div>
+  );
+}
+
+export default function App() {
+  const [player,setPlayer]=useState(null);
+  const [adminAuthed,setAdminAuthed]=useState(false);
+
+  useEffect(()=>{
+    if(window.location.hash==="#admin")return;
+    const saved=localStorage.getItem("sd_session");
+    if(saved){try{setPlayer(JSON.parse(saved));}catch{}}
+  },[]);
+
+  useEffect(()=>{
+    if(player)localStorage.setItem("sd_session",JSON.stringify(player));
+  },[player]);
+
+  if(window.location.hash==="#admin"){
+    if(!adminAuthed)return<AdminLogin onLogin={()=>setAdminAuthed(true)}/>;
+    return<div style={S.app}><div style={{padding:14}}><AdminPage player={{username:"admin"}} notify={msg=>alert(msg)}/></div></div>;
+  }
+
+  if(!player)return<AuthPage onLogin={p=>{setPlayer(p);}}/>;
+  return<Game initialPlayer={player} onLogout={()=>{localStorage.removeItem("sd_session");setPlayer(null);}}/>;
+      }
