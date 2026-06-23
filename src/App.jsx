@@ -60,7 +60,7 @@ const PROPERTIES = [
   { id:"chopshop",   name:"Chop Shop",         icon:"🔧", price:250000,   incomePerHour:2500,  unlockLevel:15, desc:"Strip and sell stolen rides. Steady work." },
   { id:"warehouse",  name:"Warehouse",         icon:"🏭", price:1000000,  incomePerHour:8000,  unlockLevel:25, desc:"Store and move product. Real money here." },
   { id:"nightclub",  name:"Nightclub",         icon:"🎰", price:5000000,  incomePerHour:25000, unlockLevel:40, desc:"Front for the operation. Prints cash nightly." },
-  { id:"casino",     name:"Underground Casino",icon:"♠️", price:25000000, incomePerHour:100000,unlockLevel:60, desc:"High stakes. The house always wins — yours." },
+  { id:"casino",     name:"Underground Casino",icon:"♠", price:25000000, incomePerHour:100000,unlockLevel:60, desc:"High stakes. The house always wins — yours." },
 ];
 
 // ── BLACK MARKET ─────────────────────────────────────────────
@@ -1264,7 +1264,7 @@ function PlayerProfileModal({target, viewer, onClose, onAttack}) {
           {[
             ["⚔ ATK", calcAttack(target), C.red],
             ["🛡 DEF", calcDefense(target), C.blue],
-            ["❤️ HP",  target.health,        C.green],
+            ["❤ HP",  target.health,        C.green],
             ["💪 STR", target.strength,      "#ff6e6e"],
             ["🧲 DEF", target.defense,       "#6eb4ff"],
             ["⚡ DEX", target.dexterity,     C.orange],
@@ -1527,7 +1527,7 @@ function AdminPage({player,notify}) {
     {tab==="edit"&&<div>
       {!sel&&<div style={{...S.card(),color:C.muted}}>👈 Select a player from Players tab first.</div>}
       {sel&&<div style={S.card()}>
-        <div style={S.ct}>✏️ EDIT: {sel.name}</div>
+        <div style={S.ct}>✏ EDIT: {sel.name}</div>
         <div style={S.g2}>
           {[["Level","level"],["Cash","cash"],["Strength","strength"],["Defense","defense"],["Dexterity","dexterity"],["Reputation","reputation"]].map(([label,key])=>(
             <div key={key}><div style={{color:C.muted,fontSize:10,marginBottom:4}}>{label.toUpperCase()}</div><input style={S.inp} type="number" value={edit[key]} onChange={e=>setEdit(f=>({...f,[key]:e.target.value}))}/></div>
@@ -1567,7 +1567,7 @@ function AdminLogin({onLogin}) {
   const [u,setU]=useState(""), [p,setP]=useState(""), [e,setE]=useState("");
   function login(){if(u===ADMIN_USER&&p===ADMIN_PASS)onLogin();else setE("Invalid credentials.");}
   return(<div style={S.authWrap}><div style={S.authBox}>
-    <div style={{color:C.orange,fontSize:20,fontWeight:900,letterSpacing:4,textAlign:"center",marginBottom:20}}>⚙️ ADMIN PANEL</div>
+    <div style={{color:C.orange,fontSize:20,fontWeight:900,letterSpacing:4,textAlign:"center",marginBottom:20}}>⚙ ADMIN PANEL</div>
     <input style={S.inp} placeholder="Username" value={u} onChange={e=>setU(e.target.value)}/>
     <input style={S.inp} type="password" placeholder="Password" value={p} onChange={e=>setP(e.target.value)} onKeyDown={e=>e.key==="Enter"&&login()}/>
     {e&&<div style={{color:C.red,fontSize:11,marginBottom:10}}>⚠ {e}</div>}
@@ -1717,4 +1717,4 @@ function Game({initialPlayer,onLogout}) {
 
   function handleStatUp(stat){if(!player.statPoints)return;setPlayer(p=>({...p,[stat]:p[stat]+1,statPoints:p.statPoints-1}));}
   function handleCreate(s){setPlayer(p=>({...p,cash:p.cash-SYNDICATE_COST,syndicate:s.name}));notify(`🏴 FOUNDED: ${s.name}`);}
-  function handleJoin(s){setPl
+  function handleJoin(s){setPlayer
