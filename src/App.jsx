@@ -35,7 +35,7 @@ const GYMS = [
 
 const TRAIN_STATS = [
   { id:"strength",  name:"Strength",  icon:"💪", desc:"Increases attack power" },
-  { id:"defense",   name:"Defense",   icon:"🛡️", desc:"Reduces damage taken" },
+  { id:"defense",   name:"Defense",   icon:"🛡", desc:"Reduces damage taken" },
   { id:"dexterity", name:"Dexterity", icon:"⚡", desc:"Hit chance & crit rate" },
 ];
 
@@ -139,7 +139,7 @@ function getDailyBMItems(seed) {
 
 // ── NOTIFICATION HELPERS ─────────────────────────────────────
 const NOTIF_TYPES = {
-  combat:  { icon:"⚔️",  color:"#e8001e" },
+  combat:  { icon:"⚔",  color:"#e8001e" },
   crime:   { icon:"🔪",  color:"#ff8c00" },
   income:  { icon:"💰",  color:"#ffd700" },
   level:   { icon:"🆙",  color:"#9b6dff" },
@@ -393,7 +393,7 @@ function ProfilePage({player,onStatUp}) {
     </div>
     <div style={S.g2}>
       <div style={S.card()}>
-        <div style={S.ct}>⚔️ COMBAT STATS</div>
+        <div style={S.ct}>⚔ COMBAT STATS</div>
         {[["STR","strength",C.red],["DEF","defense",C.blue],["DEX","dexterity",C.orange]].map(([l,k,c])=>(
           <div key={k} style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
             <span style={{color:C.muted,fontSize:11}}>{l}</span>
@@ -483,7 +483,7 @@ function GymPage({player,onTrain}) {
   }
   return(<div>
     <div style={S.card()}>
-      <div style={S.ct}>🏋️ GYM</div>
+      <div style={S.ct}>🏋 GYM</div>
       <div style={{color:C.muted,fontSize:11,marginBottom:8}}>Energy: <span style={{color:C.blue}}>{Math.floor(player.energy)}/{MAX_ENERGY}</span> · Gains scale with REP</div>
       <div style={{display:"flex",gap:16,fontSize:11,flexWrap:"wrap"}}>
         <span>⭐ REP Bonus: <span style={{color:C.gold,fontWeight:700}}>×{repSqrt}</span></span>
@@ -696,7 +696,7 @@ function CombatPage({player,onCombat,initTarget}) {
     <div style={{display:"flex",gap:8,marginBottom:12}}>
       {["npc","pvp"].map(m=>(
         <button key={m} onClick={()=>setMode(m)} style={{padding:"8px 20px",background:mode===m?C.red:"#14141e",border:`1px solid ${mode===m?C.red:C.border}`,borderRadius:4,color:mode===m?"#fff":C.muted,cursor:"pointer",fontSize:11,letterSpacing:2}}>
-          {m==="npc"?"🤖 STREET FIGHT":"⚔️ PvP ATTACK"}
+          {m==="npc"?"🤖 STREET FIGHT":"⚔ PvP ATTACK"}
         </button>
       ))}
     </div>
@@ -719,7 +719,7 @@ function CombatPage({player,onCombat,initTarget}) {
       </div>
       <div style={{display:"flex",gap:8,marginBottom:12}}>
         <button style={S.btn(C.muted,"#14141e")} onClick={()=>{setEnemy(createEnemy(player.level));setNpcLog([]);setNpcResult(null);}}>🔍 FIND</button>
-        {enemy&&!npcResult&&<button style={{...S.btn(),opacity:npcFighting||inHosp?0.5:1}} onClick={fightNPC} disabled={npcFighting||inHosp}>{npcFighting?"FIGHTING...":"⚔️ ATTACK"}</button>}
+        {enemy&&!npcResult&&<button style={{...S.btn(),opacity:npcFighting||inHosp?0.5:1}} onClick={fightNPC} disabled={npcFighting||inHosp}>{npcFighting?"FIGHTING...":"⚔ ATTACK"}</button>}
         {npcResult&&<button style={S.btn(C.muted,"#14141e")} onClick={()=>{setEnemy(null);setNpcResult(null);setNpcLog([]);}}>NEW</button>}
       </div>
       {npcLog.length>0&&<div style={S.card()}>
@@ -730,7 +730,7 @@ function CombatPage({player,onCombat,initTarget}) {
 
     {mode==="pvp"&&<div>
       <div style={S.card()}>
-        <div style={S.ct}>⚔️ PvP ATTACK</div>
+        <div style={S.ct}>⚔ PvP ATTACK</div>
         <div style={{color:C.muted,fontSize:11,marginBottom:10}}>
           Win = <span style={{color:C.green}}>+3 REP</span> · Lose = <span style={{color:C.red}}>-1 REP + hospital (3 min)</span><br/>
           Loser hospitalized 5 min · 60s cooldown · Max {MAX_APT} attacks/player/day · Need &gt;20 HP
@@ -773,7 +773,7 @@ function CombatPage({player,onCombat,initTarget}) {
                 style={{...S.btn(),opacity:(pvpFighting||inHosp||cdLeft>0||pvpAtksToday>=MAX_APT||player.health<=20)?0.4:1,cursor:"pointer",width:"100%"}}
                 onClick={attackPlayer}
                 disabled={pvpFighting||inHosp||cdLeft>0||pvpAtksToday>=MAX_APT||player.health<=20}>
-                {pvpFighting?"FIGHTING...":inHosp?"🏥 HOSPITALIZED":cdLeft>0?`WAIT ${Math.ceil(cdLeft/1000)}s`:"⚔️ ATTACK"}
+                {pvpFighting?"FIGHTING...":inHosp?"🏥 HOSPITALIZED":cdLeft>0?`WAIT ${Math.ceil(cdLeft/1000)}s`:"⚔ ATTACK"}
               </button>}
               {pvpResult&&<div>
                 <div style={{...S.badge(pvpResult==="WIN"?C.green:"#ff4d4d"),fontSize:12,padding:"6px 12px",marginBottom:8,display:"block",textAlign:"center"}}>{pvpResult==="WIN"?"🏆 VICTORY +3 REP":"💀 DEFEATED — YOU'RE IN HOSPITAL"}</div>
@@ -783,7 +783,7 @@ function CombatPage({player,onCombat,initTarget}) {
           </div>
         </div>
         {pvpLog.length>0&&<div style={S.card()}>
-          <div style={{...S.ct,marginBottom:8}}>⚔️ BATTLE LOG {pvpResult&&<span style={S.badge(pvpResult==="WIN"?C.green:"#ff4d4d")}>{pvpResult}</span>}</div>
+          <div style={{...S.ct,marginBottom:8}}>⚔ BATTLE LOG {pvpResult&&<span style={S.badge(pvpResult==="WIN"?C.green:"#ff4d4d")}>{pvpResult}</span>}</div>
           <div style={S.logB}>{pvpLog.map((l,i)=><div key={i} style={{color:/You hit|CRIT|WIN/.test(l)?C.green:/missed/.test(l)?C.muted:"#ff6e6e"}}>{l}</div>)}</div>
         </div>}
       </div>}
@@ -815,7 +815,7 @@ function InventoryPage({player,onBuy,onEquip}) {
       <div style={{color:C.green,fontSize:13,marginBottom:12,fontWeight:700}}>💰 ${player.cash.toLocaleString()}</div>
       {["weapon","armor","tool"].map(type=>(
         <div key={type} style={S.card()}>
-          <div style={S.ct}>{type==="weapon"?"⚔️":type==="armor"?"🛡️":"🔧"} {type.toUpperCase()}S</div>
+          <div style={S.ct}>{type==="weapon"?"⚔":type==="armor"?"🛡":"🔧"} {type.toUpperCase()}S</div>
           {ITEMS.filter(i=>i.type===type).map(item=>{
             const owned=player.inventory.includes(item.id),can=player.cash>=item.price;
             return(<div key={item.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${C.border}`}}>
@@ -983,7 +983,7 @@ function BlackMarketPage({player,onBuy}) {
 
   return(<div>
     <div style={S.card({borderColor:C.purple+"44"})}>
-      <div style={S.ct}>🕵️ BLACK MARKET</div>
+      <div style={S.ct}>🕵 BLACK MARKET</div>
       <div style={{color:C.muted,fontSize:11,marginBottom:6}}>
         Exclusive gear. Refreshes daily at midnight. Limited stock — first come first served.
       </div>
@@ -1262,8 +1262,8 @@ function PlayerProfileModal({target, viewer, onClose, onAttack}) {
         {/* Stats grid */}
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:14}}>
           {[
-            ["⚔️ ATK", calcAttack(target), C.red],
-            ["🛡️ DEF", calcDefense(target), C.blue],
+            ["⚔ ATK", calcAttack(target), C.red],
+            ["🛡 DEF", calcDefense(target), C.blue],
             ["❤️ HP",  target.health,        C.green],
             ["💪 STR", target.strength,      "#ff6e6e"],
             ["🧲 DEF", target.defense,       "#6eb4ff"],
@@ -1319,7 +1319,7 @@ function PlayerProfileModal({target, viewer, onClose, onAttack}) {
               onClick={()=>{ if(!viewerInHosp){onAttack(target); onClose();} }}
               disabled={viewerInHosp}
             >
-              {viewerInHosp?"🏥 HOSPITALIZED":"⚔️ CHALLENGE"}
+              {viewerInHosp?"🏥 HOSPITALIZED":"⚔ CHALLENGE"}
             </button>
           )}
           <button style={{...S.btnF(C.muted,"#14141e"), flex:1}} onClick={onClose}>CLOSE</button>
@@ -1344,7 +1344,7 @@ function LeaderboardPage({player,onAttackFromLB,onViewProfile}) {
     {tab==="players"&&<div style={S.card()}>
       <div style={S.ct}>🏆 TOP PLAYERS</div>
       <div style={{color:C.muted,fontSize:10,marginBottom:10}}>
-        Click <span style={{color:C.red,fontWeight:700}}>⚔️ ATTACK</span> to challenge any player — takes you straight to combat
+        Click <span style={{color:C.red,fontWeight:700}}>⚔ ATTACK</span> to challenge any player — takes you straight to combat
         {inHosp&&<span style={{color:C.blue,marginLeft:8}}>· 🏥 You are hospitalized</span>}
       </div>
       <div style={{display:"grid",gridTemplateColumns:"28px 1fr 40px 45px 55px 96px",gap:6,color:C.dim,fontSize:9,letterSpacing:1,marginBottom:8,padding:"0 4px"}}>
@@ -1370,7 +1370,7 @@ function LeaderboardPage({player,onAttackFromLB,onViewProfile}) {
                 style={{...S.btn(inHosp?C.muted:C.red,inHosp?C.dim:C.redBg),padding:"4px 6px",fontSize:9,opacity:inHosp?0.4:1,cursor:inHosp?"not-allowed":"pointer",flex:1}}
                 onClick={()=>!inHosp&&onAttackFromLB(p)}
                 disabled={inHosp}
-              >⚔️</button>}
+              >⚔</button>}
               <button
                 style={{...S.btn(C.blue,"#060e1a"),padding:"4px 6px",fontSize:9,cursor:"pointer",flex:1}}
                 onClick={()=>onViewProfile(p)}
@@ -1582,12 +1582,12 @@ function AdminLogin({onLogin}) {
 const NAV=[
   {id:"profile",     icon:"👤", label:"PROFILE"},
   {id:"crimes",      icon:"🔪", label:"CRIMES"},
-  {id:"combat",      icon:"⚔️",  label:"COMBAT"},
-  {id:"gym",         icon:"🏋️", label:"GYM"},
+  {id:"combat",      icon:"⚔",  label:"COMBAT"},
+  {id:"gym",         icon:"🏋", label:"GYM"},
   {id:"inventory",   icon:"🎒", label:"ITEMS"},
   {id:"syndicates",  icon:"🏴", label:"SYNDICATES"},
   {id:"properties",  icon:"🏠", label:"PROPERTY"},
-  {id:"blackmarket", icon:"🕵️", label:"MARKET"},
+  {id:"blackmarket", icon:"🕵", label:"MARKET"},
   {id:"prestige",    icon:"⚡", label:"PRESTIGE"},
   {id:"feed",        icon:"📋", label:"FEED"},
   {id:"leaderboard", icon:"🏆", label:"LEADERBOARD"},
@@ -1717,4 +1717,4 @@ function Game({initialPlayer,onLogout}) {
 
   function handleStatUp(stat){if(!player.statPoints)return;setPlayer(p=>({...p,[stat]:p[stat]+1,statPoints:p.statPoints-1}));}
   function handleCreate(s){setPlayer(p=>({...p,cash:p.cash-SYNDICATE_COST,syndicate:s.name}));notify(`🏴 FOUNDED: ${s.name}`);}
-  function
+  function handleJoin(s){setPl
