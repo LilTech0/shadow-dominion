@@ -275,7 +275,7 @@ function Confirm({msg,onYes,onNo}) {
 // DAILY LOGIN MODAL
 // ============================================================
 function DailyModal({player,onClaim,onClose}) {
-  const streak=Math.min(7,player.loginStreak||1);
+  const streak=Math.min(7,Math.max(1,player.loginStreak||1));
   const reward=DAILY_REWARDS[streak];
   return(<div style={{position:"fixed",inset:0,background:"#000c",display:"flex",alignItems:"center",justifyContent:"center",zIndex:9998}}>
     <div style={{background:C.card,border:`1px solid ${C.gold}44`,borderRadius:10,padding:32,maxWidth:360,width:"100%",textAlign:"center"}}>
@@ -379,7 +379,7 @@ function ProfilePage({player,onStatUp}) {
   const xpN=XP_FOR_LEVEL(player.level+1);
   const wpn=ITEMS.find(i=>i.id===player.equippedWeapon);
   const arm=ITEMS.find(i=>i.id===player.equippedArmor);
-  const wr=player.wins+player.losses>0?((player.wins/(player.wins+player.losses))*100).toFixed(0):0;
+  const wr=player.wins+player.losses>0?((player.wins/(player.wins+player.losses))*100).toFixed(0):"—";
   return(<div>
     <div style={S.card()}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16}}>
@@ -399,7 +399,7 @@ function ProfilePage({player,onStatUp}) {
         <div style={S.barW}><div style={{...S.bar((player.xp/xpN)*100,C.purple),height:"100%"}}/></div>
       </div>
       <div style={{display:"flex",gap:20,marginTop:14,paddingTop:14,borderTop:`1px solid ${C.border}`,flexWrap:"wrap"}}>
-        {[["CASH","$"+player.cash.toLocaleString(),C.green],["WINS",player.wins,C.blue],["LOSSES",player.losses,C.red],["WIN%",wr+"%",C.orange],["CRIMES",player.crimeStats?.total||0,C.muted]].map(([l,v,c])=>(
+        {[["CASH","$"+player.cash.toLocaleString(),C.green],["WINS",player.wins,C.blue],["LOSSES",player.losses,C.red],["WIN%",wr==="—"?wr:wr+"%",C.orange],["CRIMES",player.crimeStats?.total||0,C.muted]].map(([l,v,c])=>(
           <div key={l}><div style={{color:c,fontWeight:900,fontSize:16}}>{v}</div><div style={{color:C.muted,fontSize:9,letterSpacing:1}}>{l}</div></div>
         ))}
       </div>
@@ -449,7 +449,7 @@ function CrimesPage({player,onCrime}) {
   function commit(crime) {
     if(inJail){setLog(l=>[{t:`🔒 You're in jail for ${jailLeft} more min!`,g:false},...l]);return;}
     if(player.nerve<crime.nerve){setLog(l=>[{t:`❌ Not enough nerve (need ${crime.nerve})`,g:false},...l]);return;}
-    const chance=Math.min(95,Math.max(5,crime.baseChance+Math.floor(player.level*1.5)+player.level+eb-crime.difficulty));
+    const chance=Math.min(95,Math.max(5,crime.baseChance+Math.floor(player.level*1.5)+eb-crime.difficulty));
     if(Math.random()*100<=chance){
       const reward=Math.floor(crime.baseReward*(0.8+Math.random()*0.4));
       onCrime({success:true,nerveCost:crime.nerve,cash:reward,xp:crime.xp,rep:1,crimeName:crime.name});
@@ -467,7 +467,7 @@ function CrimesPage({player,onCrime}) {
     </div>}
     <div style={S.card()}><div style={S.ct}>🔪 CRIMINAL ACTIVITY</div><div style={{color:C.muted,fontSize:11}}>NERVE: <span style={{color:C.orange}}>{player.nerve}/{MAX_NERVE}</span> · Regens 1/10min{tool&&<span style={{color:C.green,marginLeft:12}}>🔧 {tool.name} (+{eb}%)</span>}</div></div>
     {CRIMES.map(crime=>{
-      const chance=Math.min(95,Math.max(5,crime.baseChance+Math.floor(player.level*1.5)+player.level+eb-crime.difficulty));
+      const chance=Math.min(95,Math.max(5,crime.baseChance+Math.floor(player.level*1.5)+eb-crime.difficulty));
       const can=player.nerve>=crime.nerve;
       return(<div key={crime.id} style={S.card({opacity:can?1:0.45})}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
@@ -564,7 +564,7 @@ function runFight(attacker, defender, onTick, onDone) {
   function tick() {
     if(pH<=0||eH<=0||round>=20){
       const won=eH<=0&&pH>0;
-      nl.push(won?`🏆 YOU WIN — +${won?2:0} REP`:`💀 DEFEATED — sent to hospital`);
+      nl.push(won?`🏆 YOU WIN — +2 REP`:`💀 DEFEATED — sent to hospital`);
       onTick([...nl]);
       onDone({won,healthLost:Math.max(0,attacker.health-pH),enemyHealthLost:Math.max(0,defender.health-eH),rounds:round});
       return;
@@ -1894,8 +1894,7 @@ function Game({initialPlayer,onLogout}) {
 
   function handleStatUp(stat){if(!player.statPoints)return;setPlayer(p=>({...p,[stat]:p[stat]+1,statPoints:p.statPoints-1}));}
   function handleCreate(s){setPlayer(p=>({...p,cash:p.cash-SYNDICATE_COST,syndicate:s.name}));notify(`🏴 FOUNDED: ${s.name}`);}
-  function handleJoin(s){setPlayer
-(p=>({...p,syndicate:s.name}));notify(`🏴 JOINED: ${s.name}`);}
+  function handleJoin(s){setPlayer(p=>({...p,syndicate:s.name}));notify(`🏴 JOINED: ${s.name}`);}
   function handleLeave(){setPlayer(p=>({...p,syndicate:null}));notify("Left syndicate.");}
   function handleContribute(amt){setPlayer(p=>({...p,cash:p.cash-amt}));notify(`💰 Contributed $${amt.toLocaleString()}`);}
 
@@ -2037,3 +2036,5 @@ export default function App() {
   return<Game initialPlayer={player} onLogout={()=>{localStorage.removeItem("sd_session");setPlayer(null);}}/>;
 }
 // 
+
+    
