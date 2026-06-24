@@ -2932,6 +2932,395 @@ create index on chat_messages (created_at);`}</pre>
 // ============================================================
 // MAIN GAME — NAV now includes properties, blackmarket, prestige
 // ============================================================
+
+// ============================================================
+// WORLD MAP PAGE
+// ============================================================
+const CITY_COORDS = {
+  hometown:   { x:20, y:60, name:"Maplewood",  flag:"🏙" },
+  portclay:   { x:40, y:35, name:"Port Clay",   flag:"⚓" },
+  neonridge:  { x:65, y:50, name:"Neon Ridge",  flag:"🌆" },
+  irongate:   { x:55, y:75, name:"Iron Gate",   flag:"🏭" },
+  ghosthaven: { x:82, y:25, name:"Ghost Haven", flag:"💀" },
+};
+
+function WorldMapPage({ player, onlineUsers, onAttackPlayer }) {
+  const [selectedCity, setSelectedCity] = useState(null);
+  const [tab, setTab] = useState("map");
+  const myCity = player.currentCity || "hometown";
+
+  const cityGroups = {};
+  onlineUsers.forEach(u => {
+    const c = u.city || "hometown";
+    if(!cityGroups[c]) cityGroups[c] = [];
+    cityGroups[c].push(u);
+  });
+
+  return(<div>
+    <div style={{display:"flex",gap:4,marginBottom:14}}>
+      {["map","players"].map(t=>(
+        <button key={t} onClick={()=>setTab(t)} style={{padding:"7px 14px",background:tab===t?C.orange:"#0d140d",border:`1px solid ${tab===t?C.orange:C.border}`,borderRadius:4,color:tab===t?"#000":C.muted,cursor:"pointer",fontSize:9,letterSpacing:2,textTransform:"uppercase",fontWeight:tab===t?900:400}}>
+          {t==="map"?"🗺 WORLD MAP":"👥 ALL PLAYERS"}
+        </button>
+      ))}
+    </div>
+
+    {tab==="map"&&<div>
+      <div style={{...S.card({borderColor:C.orange+"44",background:"#050e05"}),padding:0,overflow:"hidden"}}>
+        <svg viewBox="0 0 100 100" style={{width:"100%",height:280,display:"block"}}>
+          {[20,40,60,80].map(v=>(<g key={v}>
+            <line x1={v} y1={0} x2={v} y2={100} stroke={C.border} strokeWidth="0.3" strokeDasharray="1,2"/>
+            <line x1={0} y1={v} x2={100} y2={v} stroke={C.border} strokeWidth="0.3" strokeDasharray="1,2"/>
+          </g>))}
+          {[["hometown","portclay"],["portclay","neonridge"],["portclay","irongate"],["neonridge","ghosthaven"],["irongate","ghosthaven"]].map(([a,b])=>{
+            const ca=CITY_COORDS[a],cb=CITY_COORDS[b];
+            return <line key={a+b} x1={ca.x} y1={ca.y} x2={cb.x} y2={cb.y} stroke={C.dim} strokeWidth="0.5"/>;
+          })}
+          {Object.entries(CITY_COORDS).map(([id,c])=>{
+            const count=(cityGroups[id]||[]).length;
+            const isHere=id===myCity;
+            const isSelected=id===selectedCity;
+            return(<g key={id} onClick={()=>setSelectedCity(selectedCity===id?null:id)} style={{cursor:"pointer"}}>
+              {isHere&&<circle cx={c.x} cy={c.y} r={8} fill="none" stroke={C.green} strokeWidth="0.5" opacity="0.4">
+                <animate attributeName="r" values="5;10;5" dur="2s" repeatCount="indefinite"/>
+                <animate attributeName="opacity" values="0.4;0;0.4" dur="2s" repeatCount="indefinite"/>
+              </circle>}
+              <circle cx={c.x} cy={c.y} r={isSelected?5.5:4} fill={isHere?C.green:C.orange} stroke={isSelected?"#fff":"none"} strokeWidth="0.6"/>
+              {count>0&&<circle cx={c.x+4} cy={c.y-4} r={2.5} fill={C.green}/>}
+              {count>0&&<text x={c.x+4} y={c.y-3} fontSize="2.5" fill="#000" textAnchor="middle" fontWeight="bold">{count}</text>}
+              <text x={c.x} y={c.y+8} fontSize="3" fill={isHere?C.green:C.muted} textAnchor="middle">{c.flag} {c.name}</text>
+            </g>);
+          })}
+        </svg>
+      </div>
+
+      {selectedCity&&<div style={S.card({borderColor:C.orange+"44"})}>
+        <div style={S.ct}>{CITY_COORDS[selectedCity].flag} {CITY_COORDS[selectedCity].name} — {(cityGroups[selectedCity]||[]).length} online</div>
+        {(cityGroups[selectedCity]||[]).length===0
+          ?<div style={{color:C.muted,fontSize:11}}>No one here right now.</div>
+          :(cityGroups[selectedCity]||[]).map(u=>{
+            const isMe=u.username===player.username;
+            const sameSyn=u.syndicate&&u.syndicate===player.syndicate;
+            return(<div key={u.username} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${C.border}`}}>
+              <div>
+                <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:2}}>
+                  <span style={{width:6,height:6,borderRadius:"50%",background:C.green,display:"inline-block",boxShadow:`0 0 4px ${C.green}`}}/>
+                  <span style={{color:isMe?C.green:sameSyn?C.blue:"#fff",fontWeight:700,fontSize:12}}>{u.name}{isMe?" (you)":""}</span>
+                  {sameSyn&&!isMe&&<span style={S.badge(C.blue)}>ALLY</span>}
+                </div>
+                <div style={{color:C.muted,fontSize:10}}>Lv{u.level} · @{u.username}{u.syndicate?` · 🏴${u.syndicate}`:""}</div>
+              </div>
+              {!isMe&&!sameSyn&&<button style={{...S.btn(C.red,C.redBg),padding:"5px 12px",fontSize:9}} onClick={()=>onAttackPlayer(u)}>⚔ ATTACK</button>}
+              {!isMe&&sameSyn&&<span style={{color:C.muted,fontSize:9}}>ALLY</span>}
+            </div>);
+          })
+        }
+      </div>}
+
+      <div style={S.card()}>
+        <div style={S.ct}>📍 CITY STATUS</div>
+        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+          {Object.entries(CITY_COORDS).map(([id,c])=>{
+            const count=(cityGroups[id]||[]).length;
+            const isHere=id===myCity;
+            return(<div key={id} onClick={()=>setSelectedCity(id)} style={{padding:"8px 10px",background:isHere?C.green+"11":"#0d140d",border:`1px solid ${isHere?C.green:count>0?C.orange+"44":C.border}`,borderRadius:4,cursor:"pointer",minWidth:90,textAlign:"center"}}>
+              <div style={{fontSize:16,marginBottom:2}}>{c.flag}</div>
+              <div style={{color:isHere?C.green:"#fff",fontSize:10,fontWeight:700}}>{c.name}</div>
+              <div style={{color:count>0?C.green:C.dim,fontSize:9,marginTop:2}}>{count>0?count+" online":"empty"}</div>
+              {isHere&&<div style={{color:C.green,fontSize:8,marginTop:1}}>YOU ARE HERE</div>}
+            </div>);
+          })}
+        </div>
+      </div>
+    </div>}
+
+    {tab==="players"&&<div>
+      <div style={S.card({borderColor:C.green+"33"})}>
+        <div style={S.ct}>🟢 ALL ONLINE PLAYERS ({onlineUsers.length})</div>
+        {onlineUsers.length===0&&<div style={{color:C.muted,fontSize:11}}>No one else online right now.</div>}
+        {onlineUsers.map(u=>{
+          const isMe=u.username===player.username;
+          const sameSyn=u.syndicate&&u.syndicate===player.syndicate;
+          const cityInfo=CITY_COORDS[u.city||"hometown"];
+          return(<div key={u.username} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${C.border}`}}>
+            <div>
+              <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:3}}>
+                <span style={{width:7,height:7,borderRadius:"50%",background:C.green,display:"inline-block",boxShadow:`0 0 5px ${C.green}`}}/>
+                <span style={{color:isMe?C.green:sameSyn?C.blue:"#fff",fontWeight:700,fontSize:12}}>{u.name}</span>
+                {isMe&&<span style={S.badge(C.green)}>YOU</span>}
+                {sameSyn&&!isMe&&<span style={S.badge(C.blue)}>ALLY</span>}
+              </div>
+              <div style={{color:C.muted,fontSize:10}}>Lv{u.level} · 📍{cityInfo?.name||u.city}{u.syndicate?` · 🏴${u.syndicate}`:""}</div>
+            </div>
+            {!isMe&&!sameSyn&&<button style={{...S.btn(C.red,C.redBg),padding:"5px 10px",fontSize:9}} onClick={()=>onAttackPlayer(u)}>⚔ ATK</button>}
+          </div>);
+        })}
+      </div>
+      {onlineUsers.length>1&&<div style={S.card()}>
+        <div style={S.ct}>📊 SESSION STATS</div>
+        <div style={{display:"flex",gap:0,flexWrap:"wrap"}}>
+          {[
+            ["ONLINE",      onlineUsers.length,                                                                       C.green],
+            ["SYNDICATES",  new Set(onlineUsers.map(u=>u.syndicate).filter(Boolean)).size,                            C.purple],
+            ["AVG LEVEL",   Math.round(onlineUsers.reduce((s,u)=>s+(u.level||1),0)/onlineUsers.length),              C.orange],
+            ["CITIES",      new Set(onlineUsers.map(u=>u.city||"hometown")).size,                                     C.blue],
+          ].map(([l,v,c])=>(
+            <div key={l} style={{flex:"1 1 45%",marginBottom:10}}>
+              <div style={{color:c,fontWeight:900,fontSize:15}}>{v}</div>
+              <div style={{color:C.muted,fontSize:9,letterSpacing:1}}>{l}</div>
+            </div>
+          ))}
+        </div>
+      </div>}
+    </div>}
+  </div>);
+}
+
+// ============================================================
+// SYNDICATE WARS PAGE
+// ============================================================
+async function sbInsert(table, row) {
+  const { error } = await getSB().from(table).insert(row);
+  return error;
+}
+
+function SyndicateWarsPage({ player, onlineUsers, notify }) {
+  const [wars, setWars]         = useState([]);
+  const [loading, setLoading]   = useState(true);
+  const [declaring, setDeclaring] = useState(false);
+  const [confirm, setConfirm]   = useState(null);
+  const [tab, setTab]           = useState("active");
+
+  const syndicates  = getSyndicates();
+  const mySyn       = syndicates.find(s=>s.name===player.syndicate);
+  const isLeader    = mySyn?.leader===player.username;
+  const isOfficer   = (mySyn?.officers||[]).includes(player.username);
+  const canDeclare  = isLeader||isOfficer;
+
+  async function loadWars() {
+    setLoading(true);
+    const { data, error } = await getSB().from("syndicate_wars").select("*").order("created_at",{ascending:false}).limit(30);
+    if(!error) setWars(data||[]);
+    setLoading(false);
+  }
+
+  useEffect(()=>{ loadWars(); },[]);
+
+  // Real-time score updates
+  useEffect(()=>{
+    const ch = getSB().channel("wars-live")
+      .on("postgres_changes",{event:"UPDATE",schema:"public",table:"syndicate_wars"},()=>loadWars())
+      .on("postgres_changes",{event:"INSERT",schema:"public",table:"syndicate_wars"},()=>loadWars())
+      .subscribe();
+    return ()=>ch.unsubscribe();
+  },[]);
+
+  async function declareWar(enemySyn) {
+    if((mySyn?.treasury||0)<500000){ notify("❌ Need $500,000 in treasury"); return; }
+    setDeclaring(true);
+    const err = await sbInsert("syndicate_wars",{
+      attacker_syndicate: mySyn.name,
+      defender_syndicate: enemySyn.name,
+      attacker_score: 0, defender_score: 0,
+      status: "active",
+      ends_at: new Date(Date.now()+86400000).toISOString(),
+      declared_by: player.username,
+    });
+    if(err){ notify("❌ "+err.message); setDeclaring(false); return; }
+    const updated = syndicates.map(s=>s.name===mySyn.name?{...s,treasury:(s.treasury||0)-500000,wars:(s.wars||0)+1}:s);
+    saveSyndicates(updated);
+    notify("⚔ WAR DECLARED on "+enemySyn.name+"!");
+    setDeclaring(false); setTab("active"); loadWars();
+  }
+
+  async function strike(war) {
+    if(player.energy<10){ notify("❌ Need 10 energy to strike"); return; }
+    const isAtk = war.attacker_syndicate===player.syndicate;
+    const dmg   = Math.floor(5+Math.random()*15+(player.level||1)*0.5+calcAttack(player)*0.1);
+    const field  = isAtk?"attacker_score":"defender_score";
+    const cur    = isAtk?war.attacker_score:war.defender_score;
+    await getSB().from("syndicate_wars").update({[field]:cur+dmg}).eq("id",war.id);
+    await sbInsert("war_events",{
+      war_id: war.id,
+      attacker_syndicate: player.syndicate,
+      defender_syndicate: isAtk?war.defender_syndicate:war.attacker_syndicate,
+      attacker_name: player.name, damage: dmg,
+      created_at: new Date().toISOString(),
+    });
+    notify("⚔ Strike! +"+dmg+" war points");
+    loadWars();
+  }
+
+  function fmtLeft(endsAt) {
+    const ms=new Date(endsAt)-Date.now();
+    if(ms<=0) return "ENDED";
+    const h=Math.floor(ms/3600000), m=Math.floor((ms%3600000)/60000);
+    return h+"h "+m+"m left";
+  }
+
+  const myWars    = wars.filter(w=>w.attacker_syndicate===player.syndicate||w.defender_syndicate===player.syndicate);
+  const activeWars= myWars.filter(w=>w.status==="active"&&new Date(w.ends_at)>new Date());
+  const pastWars  = myWars.filter(w=>w.status!=="active"||new Date(w.ends_at)<=new Date());
+  const otherSyns = syndicates.filter(s=>s.name!==player.syndicate);
+
+  return(<div>
+    {confirm&&<Confirm msg={confirm.msg} onYes={()=>{confirm.action();setConfirm(null);}} onNo={()=>setConfirm(null)}/>}
+
+    {!player.syndicate&&<div style={{...S.card(),color:C.muted,textAlign:"center",padding:28}}>
+      <div style={{fontSize:28,marginBottom:10}}>⚔</div>
+      Join a syndicate to participate in wars.
+    </div>}
+
+    {player.syndicate&&<div>
+      {/* Header card */}
+      <div style={S.card({borderColor:C.red+"44",background:"#0e0404"})}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
+          <div>
+            <div style={{color:C.red,fontWeight:900,fontSize:16,letterSpacing:2}}>⚔ WAR ROOM</div>
+            <div style={{color:C.muted,fontSize:11,marginTop:2}}>🏴 {player.syndicate}</div>
+          </div>
+          <div style={{textAlign:"right"}}>
+            <div style={{color:activeWars.length>0?C.red:C.muted,fontWeight:900,fontSize:20}}>{activeWars.length}</div>
+            <div style={{color:C.muted,fontSize:9}}>ACTIVE WARS</div>
+          </div>
+        </div>
+        <div style={{display:"flex",gap:14,fontSize:11,flexWrap:"wrap"}}>
+          <span style={{color:C.gold}}>💰 Treasury: ${(mySyn?.treasury||0).toLocaleString()}</span>
+          <span style={{color:C.muted}}>War cost: $500,000</span>
+          {canDeclare&&<span style={S.badge(C.orange)}>{isLeader?"👑 LEADER":"⭐ OFFICER"}</span>}
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div style={{display:"flex",gap:4,marginBottom:14,flexWrap:"wrap"}}>
+        {["active","declare","history"].map(t=>(
+          <button key={t} onClick={()=>setTab(t)} style={{padding:"7px 14px",background:tab===t?C.red:"#0d140d",border:`1px solid ${tab===t?C.red:C.border}`,borderRadius:4,color:tab===t?"#fff":C.muted,cursor:"pointer",fontSize:9,letterSpacing:2,textTransform:"uppercase",fontWeight:tab===t?900:400,position:"relative"}}>
+            {t==="active"?"⚔ ACTIVE":t==="declare"?"📣 DECLARE":"📋 HISTORY"}
+            {t==="active"&&activeWars.length>0&&<span style={{marginLeft:5,background:C.red,color:"#fff",borderRadius:8,fontSize:8,padding:"1px 5px",fontWeight:900}}>{activeWars.length}</span>}
+          </button>
+        ))}
+      </div>
+
+      {/* ACTIVE WARS */}
+      {tab==="active"&&<div>
+        {loading&&<div style={{color:C.muted,padding:20,textAlign:"center",fontSize:12}}>Loading wars...</div>}
+        {!loading&&activeWars.length===0&&<div style={{...S.card(),textAlign:"center",padding:28}}>
+          <div style={{fontSize:28,marginBottom:8}}>🕊</div>
+          <div style={{color:C.muted,fontSize:12}}>No active wars.</div>
+          <button style={{...S.btn(C.red,C.redBg),marginTop:12}} onClick={()=>setTab("declare")}>DECLARE WAR →</button>
+        </div>}
+        {activeWars.map(war=>{
+          const isAtk=war.attacker_syndicate===player.syndicate;
+          const myScore=isAtk?war.attacker_score:war.defender_score;
+          const theirScore=isAtk?war.defender_score:war.attacker_score;
+          const enemy=isAtk?war.defender_syndicate:war.attacker_syndicate;
+          const total=myScore+theirScore||1;
+          const myPct=Math.min(100,Math.round((myScore/total)*100));
+          const winning=myScore>=theirScore;
+          return(<div key={war.id} style={S.card({borderColor:C.red+"55",background:"#0e0404"})}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
+              <div>
+                <div style={{color:"#fff",fontWeight:900,fontSize:14}}>{mySyn?.name} <span style={{color:C.red}}>vs</span> {enemy}</div>
+                <div style={{color:C.muted,fontSize:10,marginTop:2}}>⏱ {fmtLeft(war.ends_at)}</div>
+                <div style={{color:C.dim,fontSize:9,marginTop:1}}>Declared by {war.declared_by}</div>
+              </div>
+              <div style={{textAlign:"right"}}>
+                <div style={{color:winning?C.green:C.red,fontWeight:900,fontSize:22}}>{winning?"WINNING":"LOSING"}</div>
+                <div style={{color:C.muted,fontSize:9}}>{myScore} vs {theirScore} pts</div>
+              </div>
+            </div>
+            {/* Score bar */}
+            <div style={{marginBottom:12}}>
+              <div style={{display:"flex",justifyContent:"space-between",fontSize:10,marginBottom:4}}>
+                <span style={{color:C.green,fontWeight:700}}>{mySyn?.name}: {myScore}</span>
+                <span style={{color:C.red,fontWeight:700}}>{enemy}: {theirScore}</span>
+              </div>
+              <div style={{display:"flex",borderRadius:4,overflow:"hidden",height:18,border:`1px solid ${C.border}`}}>
+                <div style={{width:myPct+"%",background:`linear-gradient(90deg,${C.green}88,${C.green})`,transition:"width 0.5s",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,color:"#000",fontWeight:900,minWidth:myPct>10?"auto":0}}>{myPct>15?myPct+"%":""}</div>
+                <div style={{flex:1,background:`linear-gradient(90deg,${C.red}88,${C.red})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,color:"#fff",fontWeight:900}}>{100-myPct>15?(100-myPct)+"%":""}</div>
+              </div>
+            </div>
+            <button
+              style={{...S.btnF(C.red,C.redBg),opacity:player.energy>=10?1:0.4}}
+              onClick={()=>player.energy>=10
+                ?setConfirm({msg:`Strike ${enemy}?
+
+Costs 10 energy. Your attack power adds to damage dealt.`,action:()=>strike(war)})
+                :notify("❌ Need 10 energy to strike")}
+              disabled={player.energy<10}>
+              ⚔ STRIKE {enemy.toUpperCase()} — 10 ENERGY
+            </button>
+            {player.energy<10&&<div style={{color:C.muted,fontSize:10,textAlign:"center",marginTop:6}}>Energy: {Math.floor(player.energy)}/50 — wait for regen</div>}
+          </div>);
+        })}
+      </div>}
+
+      {/* DECLARE WAR */}
+      {tab==="declare"&&<div>
+        {!canDeclare&&<div style={{...S.card(),color:C.muted,padding:20}}>Only syndicate leaders and officers can declare war.</div>}
+        {canDeclare&&<div>
+          <div style={S.card({borderColor:C.red+"33",background:"#0e0404"})}>
+            <div style={S.ct}>📣 DECLARE WAR ON A SYNDICATE</div>
+            <div style={{color:C.muted,fontSize:11,lineHeight:1.8}}>
+              Cost: <span style={{color:(mySyn?.treasury||0)>=500000?C.green:C.red,fontWeight:700}}>$500,000</span> from treasury<br/>
+              Your treasury: <span style={{color:C.gold,fontWeight:700}}>${(mySyn?.treasury||0).toLocaleString()}</span><br/>
+              Duration: <span style={{color:"#fff"}}>24 hours</span><br/>
+              Win condition: <span style={{color:"#fff"}}>most strike points when time expires</span>
+            </div>
+          </div>
+          {otherSyns.length===0&&<div style={{...S.card(),color:C.muted,textAlign:"center",padding:20}}>No other syndicates to war with.</div>}
+          {otherSyns.map(s=>{
+            const atWar=activeWars.some(w=>w.attacker_syndicate===s.name||w.defender_syndicate===s.name);
+            const canAfford=(mySyn?.treasury||0)>=500000;
+            return(<div key={s.name} style={S.card({borderColor:atWar?C.red+"44":C.border,opacity:atWar?0.6:1})}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <div>
+                  <div style={{color:"#fff",fontWeight:900,fontSize:14,marginBottom:3}}>{s.name}</div>
+                  <div style={{color:C.muted,fontSize:10}}>Lv{s.level||1} · {s.members.length} members · 💰${(s.treasury||0).toLocaleString()}</div>
+                  {atWar&&<div style={{color:C.red,fontSize:9,marginTop:3}}>⚔ ALREADY AT WAR</div>}
+                </div>
+                {!atWar&&<button
+                  style={{...S.btn(canAfford&&canDeclare?C.red:C.muted,canAfford&&canDeclare?C.redBg:"#14141e"),opacity:canAfford&&canDeclare&&!declaring?1:0.4}}
+                  disabled={!canAfford||!canDeclare||declaring}
+                  onClick={()=>setConfirm({msg:`Declare war on "${s.name}"?
+
+Cost: $500,000 from treasury
+Duration: 24 hours
+All members can strike to earn war points.`,action:()=>declareWar(s)})}>
+                  {declaring?"...":"⚔ WAR"}
+                </button>}
+              </div>
+            </div>);
+          })}
+        </div>}
+      </div>}
+
+      {/* HISTORY */}
+      {tab==="history"&&<div>
+        {pastWars.length===0&&<div style={{...S.card(),color:C.muted,textAlign:"center",padding:20}}>No war history yet.</div>}
+        {pastWars.map(war=>{
+          const isAtk=war.attacker_syndicate===player.syndicate;
+          const myScore=isAtk?war.attacker_score:war.defender_score;
+          const theirScore=isAtk?war.defender_score:war.attacker_score;
+          const won=myScore>theirScore;
+          const tied=myScore===theirScore;
+          const enemy=isAtk?war.defender_syndicate:war.attacker_syndicate;
+          return(<div key={war.id} style={S.card({borderColor:won?C.green+"33":tied?C.orange+"33":C.red+"33"})}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <div>
+                <div style={{color:won?C.green:tied?C.orange:C.red,fontWeight:700,fontSize:13}}>{won?"🏆 VICTORY":tied?"🤝 DRAW":"💀 DEFEAT"} vs {enemy}</div>
+                <div style={{color:C.muted,fontSize:10,marginTop:2}}>{myScore} — {theirScore} points</div>
+                <div style={{color:C.dim,fontSize:9,marginTop:1}}>Declared by {war.declared_by}</div>
+              </div>
+              <div style={{color:C.muted,fontSize:9,textAlign:"right"}}>{new Date(war.created_at).toLocaleDateString()}</div>
+            </div>
+          </div>);
+        })}
+      </div>}
+    </div>}
+  </div>);
+}
+
 const NAV=[
   {id:"profile",     icon:"👤", label:"PROFILE"},
   {id:"crimes",      icon:"🔪", label:"CRIMES"},
@@ -2947,6 +3336,8 @@ const NAV=[
   {id:"jail",        icon:"🔒", label:"JAIL"},
   {id:"travel",      icon:"🌍", label:"TRAVEL"},
   {id:"chat",        icon:"💬", label:"CHAT"},
+  {id:"worldmap",    icon:"🗺", label:"WORLD"},
+  {id:"wars",        icon:"⚔",  label:"WARS"},
 ];
 
 function Game({initialPlayer,onLogout}) {
@@ -3196,6 +3587,12 @@ function Game({initialPlayer,onLogout}) {
     });
   }
 
+  function handleAttackFromMap(u){
+    setPvpInitTarget(u);
+    setPage("combat");
+    notify("⚔ Targeting "+u.name+"...");
+  }
+
   function handleAttackFromLB(target){
     setPvpInitTarget(target);
     setPage("combat");
@@ -3260,6 +3657,8 @@ function Game({initialPlayer,onLogout}) {
         {page==="jail"       &&<JailPage       player={player} onBail={handleBail} onBreakout={handleBreakout}/>}
         {page==="travel"     &&<TravelPage     player={player} onTravel={handleTravel} onArrive={handleArrive} onCityCrime={handleCityCrime}/>}
         {page==="chat"       &&<ChatPage       player={player} onlineUsers={onlineUsers}/>}
+        {page==="worldmap"   &&<WorldMapPage   player={player} onlineUsers={onlineUsers} onAttackPlayer={handleAttackFromMap}/>}
+        {page==="wars"       &&<SyndicateWarsPage player={player} onlineUsers={onlineUsers} notify={notify}/>}
       </div>
     </div>
   );
