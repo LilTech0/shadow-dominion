@@ -1,6 +1,8 @@
-const SUPABASE_URL = "https://uarwnztqtlmxdxpnunup.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_d2yDU8qFdcWuI33jhOjSyA_DDr9y2fN";
 import { useState, useEffect, useCallback, useRef } from "react";
+import { createClient } from "@supabase/supabase-js";
+
+const SUPABASE_URL = "https://uarwnztqtlmxdxpnunup.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVhcnduenRxdGxteGR4cG51bnVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIwMDUwMzAsImV4cCI6MjA5NzU4MTAzMH0.gDrqQBnuW82DxmTmBAXszAbEmE6q-tvV5OSe_6Wqy6I";
 
 // ============================================================
 // GAME CONSTANTS & FORMULAS
@@ -2584,16 +2586,10 @@ function AdminLogin({onLogin}) {
 
 
 // Lazy-init Supabase client (loaded from CDN or npm)
-let _sb = null;
-function getSB() {
-  if(_sb) return _sb;
-  if(window.supabase) {
-    _sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      realtime:{ params:{ eventsPerSecond:10 } }
-    });
-  }
-  return _sb;
-}
+const _sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  realtime:{ params:{ eventsPerSecond:10 } }
+});
+function getSB() { return _sb; }
 
 const CHAT_CHANNELS = [
   { id:"global",    name:"🌐 Global",   desc:"Everyone" },
@@ -2772,7 +2768,7 @@ function ChatPage({ player, onlineUsers }) {
 
   const CITIES_MAP = { hometown:"Maplewood", portclay:"Port Clay", neonridge:"Neon Ridge", irongate:"Iron Gate", ghosthaven:"Ghost Haven" };
 
-  const sbConfigured = SUPABASE_URL !== "https://YOUR_PROJECT.supabase.co";
+  const sbConfigured = true;
 
   return(<div>
     {/* Not configured banner */}
