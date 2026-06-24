@@ -248,33 +248,33 @@ function saveAnnouncements(a){ try { localStorage.setItem("sd_announcements",JSO
 // STYLES
 // ============================================================
 const C = {
-  bg:"#0a0a0f", card:"#111118", border:"#1e1e2e", border2:"#2a2a3a",
-  red:"#e8001e", redBg:"#1a0008",
-  green:"#00e87a", greenBg:"#001a10",
-  blue:"#4d9fff", orange:"#ff8c00", orangeBg:"#1a0e00",
-  purple:"#9b6dff", gold:"#ffd700", goldBg:"#1a1400",
-  text:"#e2e2e2", muted:"#555566", dim:"#333344",
+  bg:"#060a06", card:"#0b0f0b", border:"#1a2e1a", border2:"#243824",
+  red:"#00ff88", redBg:"#001a0e",
+  green:"#a8ff3e", greenBg:"#0d1a00",
+  blue:"#00e5ff", orange:"#f0ff00", orangeBg:"#1a1a00",
+  purple:"#cc00ff", gold:"#00ff88", goldBg:"#001a0e",
+  text:"#c8ffc8", muted:"#3a5a3a", dim:"#1e3a1e",
 };
 
 const S = {
   app: { minHeight:"100vh", background:C.bg, color:C.text, fontFamily:"'Courier New',monospace", fontSize:13 },
-  authWrap: { display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", minHeight:"100vh", padding:20, background:`radial-gradient(ellipse at center,#150010 0%,${C.bg} 70%)` },
+  authWrap: { display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", minHeight:"100vh", padding:20, background:`radial-gradient(ellipse at center,#001a08 0%,${C.bg} 70%)` },
   authBox: { background:C.card, border:`1px solid ${C.border2}`, borderRadius:8, padding:32, width:"100%", maxWidth:400 },
   card: (x={}) => ({ background:C.card, border:`1px solid ${C.border}`, borderRadius:6, padding:16, marginBottom:12, ...x }),
   ct: { color:C.red, fontSize:10, letterSpacing:3, textTransform:"uppercase", marginBottom:12, fontWeight:700 },
-  inp: { width:"100%", background:"#0a0a12", border:`1px solid ${C.border2}`, borderRadius:4, padding:"10px 12px", color:C.text, fontSize:13, outline:"none", boxSizing:"border-box", marginBottom:10 },
+  inp: { width:"100%", background:"#060d06", border:`1px solid ${C.border2}`, borderRadius:4, padding:"10px 12px", color:C.text, fontSize:13, outline:"none", boxSizing:"border-box", marginBottom:10 },
   btn: (c=C.red,b=C.redBg) => ({ background:b, border:`1px solid ${c}44`, borderRadius:4, padding:"9px 18px", color:c, fontSize:11, letterSpacing:2, cursor:"pointer", fontWeight:700 }),
   btnF: (c=C.red,b=C.redBg) => ({ width:"100%", background:b, border:`1px solid ${c}44`, borderRadius:4, padding:"11px", color:c, fontSize:11, letterSpacing:2, cursor:"pointer", fontWeight:700 }),
   badge: (c) => ({ display:"inline-block", padding:"2px 7px", borderRadius:10, fontSize:9, background:c+"18", color:c, border:`1px solid ${c}33`, letterSpacing:1 }),
   bar: (p,c) => ({ height:"100%", width:`${Math.min(100,Math.max(0,p))}%`, background:`linear-gradient(90deg,${c}88,${c})`, transition:"width 0.4s", boxShadow:`0 0 6px ${c}66` }),
-  barW: { background:"#0a0a12", borderRadius:2, height:10, overflow:"hidden", flex:1, border:`1px solid ${C.border}`, position:"relative" },
+  barW: { background:"#060d06", borderRadius:2, height:10, overflow:"hidden", flex:1, border:`1px solid ${C.border}`, position:"relative" },
   row: { display:"flex", gap:8, alignItems:"center", marginBottom:6 },
   g2: { display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 },
-  logB: { background:"#06060e", border:`1px solid ${C.dim}`, borderRadius:4, padding:10, maxHeight:180, overflowY:"auto", fontSize:11, lineHeight:1.9 },
+  logB: { background:"#040d04", border:`1px solid ${C.dim}`, borderRadius:4, padding:10, maxHeight:180, overflowY:"auto", fontSize:11, lineHeight:1.9 },
   nav: (a) => ({ padding:"12px 8px", cursor:"pointer", fontSize:9, letterSpacing:1, color:a?"#fff":C.muted, background:a?C.red+"33":"transparent", borderBottom:`2px solid ${a?C.red:"transparent"}`, display:"flex", flexDirection:"column", alignItems:"center", gap:3, flex:1, textAlign:"center", fontWeight:a?700:400, userSelect:"none" }),
-  topBar: { background:"#0d0d14", borderBottom:`1px solid ${C.border}`, padding:"6px 14px", display:"flex", justifyContent:"space-between", alignItems:"center", flexShrink:0 },
-  statBar: { background:"#0f0f1a", borderBottom:`1px solid ${C.border}`, padding:"8px 14px", flexShrink:0 },
-  navBar: { background:"#111118", borderBottom:`1px solid ${C.border}`, display:"flex", flexShrink:0, overflowX:"auto" },
+  topBar: { background:"#080f08", borderBottom:`1px solid ${C.border}`, padding:"6px 14px", display:"flex", justifyContent:"space-between", alignItems:"center", flexShrink:0 },
+  statBar: { background:"#090f09", borderBottom:`1px solid ${C.border}`, padding:"8px 14px", flexShrink:0 },
+  navBar: { background:"#0b0f0b", borderBottom:`1px solid ${C.border}`, display:"flex", flexShrink:0, overflowX:"auto" },
 };
 
 // ============================================================
@@ -303,7 +303,7 @@ function Toast({msg,onClose}) {
 
 function Tabs({tabs,active,onSelect}) {
   return(<div style={{display:"flex",gap:6,marginBottom:14}}>
-    {tabs.map(t=>(<button key={t} onClick={()=>onSelect(t)} style={{padding:"7px 18px",background:active===t?C.red:"#14141e",border:`1px solid ${active===t?C.red:C.border}`,borderRadius:4,color:active===t?"#fff":C.muted,cursor:"pointer",fontSize:10,letterSpacing:2,textTransform:"uppercase"}}>{t}</button>))}
+    {tabs.map(t=>(<button key={t} onClick={()=>onSelect(t)} style={{padding:"7px 18px",background:active===t?C.red:"#0d140d",border:`1px solid ${active===t?C.red:C.border}`,borderRadius:4,color:active===t?"#fff":C.muted,cursor:"pointer",fontSize:10,letterSpacing:2,textTransform:"uppercase"}}>{t}</button>))}
   </div>);
 }
 
@@ -313,7 +313,7 @@ function Confirm({msg,onYes,onNo}) {
       <div style={{marginBottom:20,lineHeight:1.6}}>{msg}</div>
       <div style={{display:"flex",gap:10,justifyContent:"center"}}>
         <button style={S.btn()} onClick={onYes}>CONFIRM</button>
-        <button style={S.btn(C.muted,"#14141e")} onClick={onNo}>CANCEL</button>
+        <button style={S.btn(C.muted,"#0d140d")} onClick={onNo}>CANCEL</button>
       </div>
     </div>
   </div>);
@@ -330,7 +330,7 @@ function DailyModal({player,onClaim,onClose}) {
       <div style={{color:C.gold,fontSize:22,fontWeight:900,letterSpacing:3,marginBottom:4}}>DAILY REWARD</div>
       <div style={{color:C.muted,fontSize:11,marginBottom:20}}>Login Streak: Day {streak}</div>
       <div style={{display:"flex",gap:6,justifyContent:"center",marginBottom:24}}>
-        {[1,2,3,4,5,6,7].map(d=>(<div key={d} style={{width:36,height:36,borderRadius:4,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,background:d<streak?C.goldBg:d===streak?C.gold:"#14141e",color:d<streak?C.gold:d===streak?"#000":C.dim,border:`1px solid ${d<=streak?C.gold:C.dim}`}}>{d}</div>))}
+        {[1,2,3,4,5,6,7].map(d=>(<div key={d} style={{width:36,height:36,borderRadius:4,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,background:d<streak?C.goldBg:d===streak?C.gold:"#0d140d",color:d<streak?C.gold:d===streak?"#000":C.dim,border:`1px solid ${d<=streak?C.gold:C.dim}`}}>{d}</div>))}
       </div>
       <div style={{color:C.gold,fontSize:20,fontWeight:900,marginBottom:6}}>{reward.label}</div>
       {reward.itemId&&<div style={{color:C.orange,fontSize:12,marginBottom:16}}>+ {ITEMS.find(i=>i.id===reward.itemId)?.name}</div>}
@@ -351,7 +351,7 @@ function AnnouncementBanner() {
     if(list.length>0)setAnn(list[0]);
   },[]);
   if(!ann||dismissed)return null;
-  return(<div style={{background:"#1a0e00",border:`1px solid ${C.orange}44`,padding:"10px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",fontSize:12,flexShrink:0}}>
+  return(<div style={{background:"#1a1a00",border:`1px solid ${C.orange}44`,padding:"10px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",fontSize:12,flexShrink:0}}>
     <span>📢 <span style={{color:C.orange,fontWeight:700}}>ANNOUNCEMENT:</span> <span style={{color:C.text}}>{ann.text}</span></span>
     <button style={{...S.btn(C.muted,"transparent"),padding:"2px 8px",fontSize:10}} onClick={()=>setDismissed(true)}>✕</button>
   </div>);
@@ -478,7 +478,7 @@ function ProfilePage({player,onStatUp}) {
         <div style={S.ct}>🎒 LOADOUT</div>
         <div style={{marginBottom:12}}><div style={{color:C.muted,fontSize:10,marginBottom:4}}>WEAPON</div><div style={{color:wpn?C.orange:"#333",fontWeight:wpn?700:400}}>{wpn?.name||"Bare Hands"}</div>{wpn&&<div style={{color:C.muted,fontSize:10}}>+{wpn.weaponDmg} ATK</div>}</div>
         <div style={{marginBottom:12}}><div style={{color:C.muted,fontSize:10,marginBottom:4}}>ARMOR</div><div style={{color:arm?C.blue:"#333",fontWeight:arm?700:400}}>{arm?.name||"None"}</div>{arm&&<div style={{color:C.muted,fontSize:10}}>+{arm.armorRating} DEF</div>}</div>
-        <div style={{borderTop:`1px solid ${C.border}`,paddingTop:10}}><div style={{color:C.muted,fontSize:10,marginBottom:4}}>LOGIN STREAK</div><div style={{display:"flex",gap:4}}>{[1,2,3,4,5,6,7].map(d=>(<div key={d} style={{width:22,height:22,borderRadius:3,background:d<=(player.loginStreak||0)?C.gold:"#14141e",border:`1px solid ${d<=(player.loginStreak||0)?C.gold:C.dim}`,fontSize:8,display:"flex",alignItems:"center",justifyContent:"center",color:d<=(player.loginStreak||0)?"#000":C.dim,fontWeight:700}}>{d}</div>))}</div></div>
+        <div style={{borderTop:`1px solid ${C.border}`,paddingTop:10}}><div style={{color:C.muted,fontSize:10,marginBottom:4}}>LOGIN STREAK</div><div style={{display:"flex",gap:4}}>{[1,2,3,4,5,6,7].map(d=>(<div key={d} style={{width:22,height:22,borderRadius:3,background:d<=(player.loginStreak||0)?C.gold:"#0d140d",border:`1px solid ${d<=(player.loginStreak||0)?C.gold:C.dim}`,fontSize:8,display:"flex",alignItems:"center",justifyContent:"center",color:d<=(player.loginStreak||0)?"#000":C.dim,fontWeight:700}}>{d}</div>))}</div></div>
       </div>
     </div>
   </div>);
@@ -565,7 +565,7 @@ function GymPage({player,onTrain}) {
       <div style={{display:"flex",flexDirection:"column",gap:8}}>
         {GYMS.map(g=>{
           const unlocked=player.level>=g.unlockLevel, active=selGym===g.id;
-          return(<div key={g.id} onClick={()=>unlocked&&setSelGym(g.id)} style={{padding:"12px",borderRadius:6,border:`1px solid ${active?C.orange:unlocked?C.border:C.dim}`,background:active?"#1a0e00":"#0d0d18",cursor:unlocked?"pointer":"not-allowed",opacity:unlocked?1:0.4}}>
+          return(<div key={g.id} onClick={()=>unlocked&&setSelGym(g.id)} style={{padding:"12px",borderRadius:6,border:`1px solid ${active?C.orange:unlocked?C.border:C.dim}`,background:active?"#1a1a00":"#0d0d18",cursor:unlocked?"pointer":"not-allowed",opacity:unlocked?1:0.4}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
               <div><div style={{color:active?C.orange:"#fff",fontWeight:700}}>{g.name}{active?" ✓":""}</div><div style={{color:C.muted,fontSize:10,marginTop:2}}>{g.desc}</div></div>
               <div style={{textAlign:"right"}}><div style={{color:C.gold,fontWeight:900}}>×{g.mult}</div><div style={{color:C.blue,fontSize:10}}>{g.cost}⚡</div>{!unlocked&&<span style={S.badge(C.red)}>LVL {g.unlockLevel}</span>}</div>
@@ -588,7 +588,7 @@ function GymPage({player,onTrain}) {
               <span style={{color:C.purple,fontWeight:900,fontSize:14}}>{(cur||0).toLocaleString()}</span>
               <span style={{color:C.green,fontSize:11}}>+{preview}</span>
             </div>
-            <button onClick={()=>train(stat.id)} disabled={!canT} style={{...S.btnF(canT?C.green:C.muted,canT?C.greenBg:"#14141e"),fontSize:10,padding:"7px",opacity:canT?1:0.5,cursor:canT?"pointer":"not-allowed"}}>TRAIN ({gym.cost}⚡)</button>
+            <button onClick={()=>train(stat.id)} disabled={!canT} style={{...S.btnF(canT?C.green:C.muted,canT?C.greenBg:"#0d140d"),fontSize:10,padding:"7px",opacity:canT?1:0.5,cursor:canT?"pointer":"not-allowed"}}>TRAIN ({gym.cost}⚡)</button>
           </div>);
         })}
       </div>
@@ -765,7 +765,7 @@ function CombatPage({player,onCombat,initTarget}) {
 
     <div style={{display:"flex",gap:8,marginBottom:12}}>
       {["npc","pvp"].map(m=>(
-        <button key={m} onClick={()=>setMode(m)} style={{padding:"8px 20px",background:mode===m?C.red:"#14141e",border:`1px solid ${mode===m?C.red:C.border}`,borderRadius:4,color:mode===m?"#fff":C.muted,cursor:"pointer",fontSize:11,letterSpacing:2}}>
+        <button key={m} onClick={()=>setMode(m)} style={{padding:"8px 20px",background:mode===m?C.red:"#0d140d",border:`1px solid ${mode===m?C.red:C.border}`,borderRadius:4,color:mode===m?"#fff":C.muted,cursor:"pointer",fontSize:11,letterSpacing:2}}>
           {m==="npc"?"🤖 STREET FIGHT":"⚔ PvP ATTACK"}
         </button>
       ))}
@@ -788,9 +788,9 @@ function CombatPage({player,onCombat,initTarget}) {
         </div>
       </div>
       <div style={{display:"flex",gap:8,marginBottom:12}}>
-        <button style={S.btn(C.muted,"#14141e")} onClick={()=>{setEnemy(createEnemy(player.level));setNpcLog([]);setNpcResult(null);}}>🔍 FIND</button>
+        <button style={S.btn(C.muted,"#0d140d")} onClick={()=>{setEnemy(createEnemy(player.level));setNpcLog([]);setNpcResult(null);}}>🔍 FIND</button>
         {enemy&&!npcResult&&<button style={{...S.btn(),opacity:npcFighting||inHosp?0.5:1}} onClick={fightNPC} disabled={npcFighting||inHosp}>{npcFighting?"FIGHTING...":"⚔ ATTACK"}</button>}
-        {npcResult&&<button style={S.btn(C.muted,"#14141e")} onClick={()=>{setEnemy(null);setNpcResult(null);setNpcLog([]);}}>NEW</button>}
+        {npcResult&&<button style={S.btn(C.muted,"#0d140d")} onClick={()=>{setEnemy(null);setNpcResult(null);setNpcLog([]);}}>NEW</button>}
       </div>
       {npcLog.length>0&&<div style={S.card()}>
         <div style={{...S.ct,marginBottom:8}}>BATTLE LOG {npcResult&&<span style={S.badge(npcResult==="WIN"?C.green:"#ff4d4d")}>{npcResult}</span>}</div>
@@ -847,7 +847,7 @@ function CombatPage({player,onCombat,initTarget}) {
               </button>}
               {pvpResult&&<div>
                 <div style={{...S.badge(pvpResult==="WIN"?C.green:"#ff4d4d"),fontSize:12,padding:"6px 12px",marginBottom:8,display:"block",textAlign:"center"}}>{pvpResult==="WIN"?"🏆 VICTORY +3 REP":"💀 DEFEATED — YOU'RE IN HOSPITAL"}</div>
-                <button style={{...S.btn(C.muted,"#14141e"),width:"100%"}} onClick={()=>{setPvpTarget(null);setPvpResult(null);setPvpLog([]);setPvpSearch("");}}>NEW TARGET</button>
+                <button style={{...S.btn(C.muted,"#0d140d"),width:"100%"}} onClick={()=>{setPvpTarget(null);setPvpResult(null);setPvpLog([]);setPvpSearch("");}}>NEW TARGET</button>
               </div>}
             </div>
           </div>
@@ -1026,7 +1026,7 @@ function SyndicatesPage({player,onCreate,onJoin,onLeave,onContribute}) {
     {/* Tab bar */}
     <div style={{display:"flex",gap:4,marginBottom:14,overflowX:"auto",paddingBottom:2}}>
       {tabs.map(t=>(
-        <button key={t} onClick={()=>setTab(t)} style={{padding:"7px 14px",background:tab===t?C.purple:"#14141e",border:`1px solid ${tab===t?C.purple:C.border}`,borderRadius:4,color:tab===t?"#fff":C.muted,cursor:"pointer",fontSize:9,letterSpacing:2,textTransform:"uppercase",whiteSpace:"nowrap",fontWeight:tab===t?700:400}}>
+        <button key={t} onClick={()=>setTab(t)} style={{padding:"7px 14px",background:tab===t?C.purple:"#0d140d",border:`1px solid ${tab===t?C.purple:C.border}`,borderRadius:4,color:tab===t?"#fff":C.muted,cursor:"pointer",fontSize:9,letterSpacing:2,textTransform:"uppercase",whiteSpace:"nowrap",fontWeight:tab===t?700:400}}>
           {t==="home"?"🏴 HOME":t==="members"?"👥 MEMBERS":t==="perks"?"⚡ PERKS":t==="log"?"📋 LOG":t==="browse"?"🔍 BROWSE":"➕ CREATE"}
         </button>
       ))}
@@ -1035,7 +1035,7 @@ function SyndicatesPage({player,onCreate,onJoin,onLeave,onContribute}) {
     {/* ── HOME TAB ── */}
     {tab==="home"&&mySyn&&<div>
       {/* Banner */}
-      <div style={S.card({borderColor:C.purple+"55",background:"#0d0a18"})}>
+      <div style={S.card({borderColor:C.purple+"55",background:"#080e08"})}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
           <div>
             <div style={{color:C.purple,fontSize:22,fontWeight:900,letterSpacing:3}}>{mySyn.name}</div>
@@ -1089,7 +1089,7 @@ function SyndicatesPage({player,onCreate,onJoin,onLeave,onContribute}) {
         </div>
         <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
           {[1000,5000,10000,50000].map(v=>(
-            <button key={v} style={{...S.btn(C.muted,"#14141e"),padding:"5px 10px",fontSize:9}} onClick={()=>setAmt(String(v))}>${(v/1000).toFixed(0)}k</button>
+            <button key={v} style={{...S.btn(C.muted,"#0d140d"),padding:"5px 10px",fontSize:9}} onClick={()=>setAmt(String(v))}>${(v/1000).toFixed(0)}k</button>
           ))}
         </div>
       </div>
@@ -1125,7 +1125,7 @@ function SyndicatesPage({player,onCreate,onJoin,onLeave,onContribute}) {
               {isLeader&&!isMe&&<div style={{display:"flex",gap:4}}>
                 {!isMemberOfficer
                   ?<button style={{...S.btn(C.orange,C.orangeBg),padding:"4px 8px",fontSize:9}} onClick={()=>promote(uname)}>PROMOTE</button>
-                  :<button style={{...S.btn(C.muted,"#14141e"),padding:"4px 8px",fontSize:9}} onClick={()=>demote(uname)}>DEMOTE</button>
+                  :<button style={{...S.btn(C.muted,"#0d140d"),padding:"4px 8px",fontSize:9}} onClick={()=>demote(uname)}>DEMOTE</button>
                 }
                 <button style={{...S.btn(C.red,C.redBg),padding:"4px 8px",fontSize:9}} onClick={()=>kick(uname)}>KICK</button>
               </div>}
@@ -1147,7 +1147,7 @@ function SyndicatesPage({player,onCreate,onJoin,onLeave,onContribute}) {
           const unlocked=(mySyn.level||1)>=perk.level;
           return(
             <div key={perk.level} style={{display:"flex",gap:12,alignItems:"center",padding:"12px 0",borderBottom:`1px solid ${C.border}`,opacity:unlocked?1:0.4}}>
-              <div style={{width:32,height:32,borderRadius:"50%",background:unlocked?C.purple+"33":"#14141e",border:`2px solid ${unlocked?C.purple:C.dim}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,flexShrink:0}}>
+              <div style={{width:32,height:32,borderRadius:"50%",background:unlocked?C.purple+"33":"#0d140d",border:`2px solid ${unlocked?C.purple:C.dim}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,flexShrink:0}}>
                 {unlocked?"✓":perk.level}
               </div>
               <div style={{flex:1}}>
@@ -1240,7 +1240,7 @@ function SyndicatesPage({player,onCreate,onJoin,onLeave,onContribute}) {
           <div style={{color:C.muted,fontSize:10,marginBottom:4}}>DESCRIPTION <span style={{color:C.dim}}>(optional)</span></div>
           <input style={S.inp} placeholder="What does your syndicate stand for?" value={newDesc} onChange={e=>setNewDesc(e.target.value)} maxLength={80}/>
           <button
-            style={{...S.btnF(player.cash>=SYNDICATE_COST?C.purple:C.muted,player.cash>=SYNDICATE_COST?"#0d0a18":"#14141e"),opacity:player.cash>=SYNDICATE_COST?1:0.4}}
+            style={{...S.btnF(player.cash>=SYNDICATE_COST?C.purple:C.muted,player.cash>=SYNDICATE_COST?"#080e08":"#0d140d"),opacity:player.cash>=SYNDICATE_COST?1:0.4}}
             onClick={create}
             disabled={player.cash<SYNDICATE_COST}>
             {player.cash>=SYNDICATE_COST?"🏴 FOUND SYNDICATE — $100,000,000":"❌ NEED $100,000,000"}
@@ -1322,7 +1322,7 @@ function PropertiesPage({player,onBuyProperty,onCollect,onUpgrade}) {
     {/* Tab bar */}
     <div style={{display:"flex",gap:4,marginBottom:14}}>
       {tabs.map(t=>(
-        <button key={t} onClick={()=>{setTab(t);setDetail(null);}} style={{padding:"7px 14px",background:tab===t?C.gold:"#14141e",border:`1px solid ${tab===t?C.gold:C.border}`,borderRadius:4,color:tab===t?"#000":C.muted,cursor:"pointer",fontSize:9,letterSpacing:2,textTransform:"uppercase",fontWeight:tab===t?900:400}}>
+        <button key={t} onClick={()=>{setTab(t);setDetail(null);}} style={{padding:"7px 14px",background:tab===t?C.gold:"#0d140d",border:`1px solid ${tab===t?C.gold:C.border}`,borderRadius:4,color:tab===t?"#000":C.muted,cursor:"pointer",fontSize:9,letterSpacing:2,textTransform:"uppercase",fontWeight:tab===t?900:400}}>
           {t==="empire"?"🏠 EMPIRE":t==="market"?"🛒 BUY":"⬆ UPGRADES"}
         </button>
       ))}
@@ -1331,7 +1331,7 @@ function PropertiesPage({player,onBuyProperty,onCollect,onUpgrade}) {
     {/* ── EMPIRE TAB ── */}
     {tab==="empire"&&<div>
       {/* Income banner */}
-      <div style={S.card({borderColor:C.gold+"55",background:"#100e00"})}>
+      <div style={S.card({borderColor:C.gold+"55",background:"#061006"})}>
         <div style={S.ct}>💰 PROPERTY EMPIRE</div>
         <div style={{display:"flex",gap:0,flexWrap:"wrap",marginBottom:14}}>
           {[
@@ -1377,7 +1377,7 @@ function PropertiesPage({player,onBuyProperty,onCollect,onUpgrade}) {
                 <div style={{color:C.green,fontSize:11}}>${rate.toLocaleString()}/hr</div>
                 {nextUp&&<div style={{color:C.muted,fontSize:9,marginTop:2}}>Next upgrade: {nextUp.name} — ${nextUp.cost.toLocaleString()}</div>}
               </div>
-              <button style={{...S.btn(C.purple,"#0d0a18"),padding:"5px 10px",fontSize:9}} onClick={()=>{setTab("upgrades");setDetail(prop.id);}}>UPGRADE</button>
+              <button style={{...S.btn(C.purple,"#080e08"),padding:"5px 10px",fontSize:9}} onClick={()=>{setTab("upgrades");setDetail(prop.id);}}>UPGRADE</button>
             </div>
           );
         })}
@@ -1393,7 +1393,7 @@ function PropertiesPage({player,onBuyProperty,onCollect,onUpgrade}) {
 
     {/* ── MARKET TAB ── */}
     {tab==="market"&&<div>
-      <div style={{...S.card(),background:"#060610",borderColor:C.border}}>
+      <div style={{...S.card(),background:"#040d04",borderColor:C.border}}>
         <div style={S.ct}>🛒 PROPERTY MARKET</div>
         <div style={{color:C.muted,fontSize:11,lineHeight:1.7}}>
           Each purchase adds one unit of that property to your empire. Multiple units stack income. Income accrues for up to 24 hours before it must be collected.
@@ -1407,7 +1407,7 @@ function PropertiesPage({player,onBuyProperty,onCollect,onUpgrade}) {
         const payback  = ROI_HOURS(prop);
         const tier     = propUpgradeTier(player, prop.id);
         return(
-          <div key={prop.id} style={S.card({opacity:unlocked?1:0.4,borderColor:owned>0?C.gold+"44":C.border,background:owned>0?"#0d0c00":C.card})}>
+          <div key={prop.id} style={S.card({opacity:unlocked?1:0.4,borderColor:owned>0?C.gold+"44":C.border,background:owned>0?"#050e05":C.card})}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
               <div style={{flex:1}}>
                 <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
@@ -1434,12 +1434,12 @@ function PropertiesPage({player,onBuyProperty,onCollect,onUpgrade}) {
               ?<div style={{...S.badge(C.red),fontSize:10}}>Requires Level {prop.unlockLevel}</div>
               :<div style={{display:"flex",gap:8}}>
                 <button
-                  style={{...S.btn(canAfford?C.orange:C.muted,canAfford?C.orangeBg:"#14141e"),flex:1,opacity:canAfford?1:0.4}}
+                  style={{...S.btn(canAfford?C.orange:C.muted,canAfford?C.orangeBg:"#0d140d"),flex:1,opacity:canAfford?1:0.4}}
                   onClick={()=>canAfford?onBuyProperty(prop):showMsg("❌ Not enough cash")}
                   disabled={!canAfford}>
                   {canAfford?"BUY — $"+prop.price.toLocaleString():"❌ NEED $"+prop.price.toLocaleString()}
                 </button>
-                {owned>0&&<button style={{...S.btn(C.purple,"#0d0a18"),padding:"9px 14px"}} onClick={()=>{setTab("upgrades");setDetail(prop.id);}}>⬆</button>}
+                {owned>0&&<button style={{...S.btn(C.purple,"#080e08"),padding:"9px 14px"}} onClick={()=>{setTab("upgrades");setDetail(prop.id);}}>⬆</button>}
               </div>
             }
           </div>
@@ -1452,7 +1452,7 @@ function PropertiesPage({player,onBuyProperty,onCollect,onUpgrade}) {
       {/* Property selector */}
       <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
         {ownedProps.map(prop=>(
-          <button key={prop.id} onClick={()=>setDetail(prop.id)} style={{padding:"7px 12px",background:detail===prop.id?C.goldBg:"#14141e",border:`1px solid ${detail===prop.id?C.gold:C.border}`,borderRadius:4,color:detail===prop.id?C.gold:C.muted,cursor:"pointer",fontSize:10}}>
+          <button key={prop.id} onClick={()=>setDetail(prop.id)} style={{padding:"7px 12px",background:detail===prop.id?C.goldBg:"#0d140d",border:`1px solid ${detail===prop.id?C.gold:C.border}`,borderRadius:4,color:detail===prop.id?C.gold:C.muted,cursor:"pointer",fontSize:10}}>
             {prop.icon} {prop.name}
           </button>
         ))}
@@ -1469,7 +1469,7 @@ function PropertiesPage({player,onBuyProperty,onCollect,onUpgrade}) {
         return(
           <div>
             {/* Current status card */}
-            <div style={S.card({borderColor:C.gold+"44",background:"#0d0c00"})}>
+            <div style={S.card({borderColor:C.gold+"44",background:"#050e05"})}>
               <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
                 <span style={{fontSize:26}}>{prop.icon}</span>
                 <div>
@@ -1495,11 +1495,11 @@ function PropertiesPage({player,onBuyProperty,onCollect,onUpgrade}) {
               const locked  = i>curTier;
               const canAfford= player.cash>=up.cost;
               return(
-                <div key={i} style={S.card({opacity:locked?0.35:1,borderColor:done?C.gold+"44":isNext?C.purple+"44":C.border,background:done?"#0d0c00":isNext?"#0d0a18":C.card})}>
+                <div key={i} style={S.card({opacity:locked?0.35:1,borderColor:done?C.gold+"44":isNext?C.purple+"44":C.border,background:done?"#050e05":isNext?"#080e08":C.card})}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
                     <div style={{flex:1}}>
                       <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
-                        <div style={{width:24,height:24,borderRadius:"50%",background:done?C.goldBg:isNext?C.purple+"22":"#14141e",border:`2px solid ${done?C.gold:isNext?C.purple:C.dim}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,flexShrink:0,color:done?C.gold:isNext?C.purple:C.muted}}>
+                        <div style={{width:24,height:24,borderRadius:"50%",background:done?C.goldBg:isNext?C.purple+"22":"#0d140d",border:`2px solid ${done?C.gold:isNext?C.purple:C.dim}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,flexShrink:0,color:done?C.gold:isNext?C.purple:C.muted}}>
                           {done?"✓":i+1}
                         </div>
                         <span style={{color:done?C.gold:isNext?"#fff":C.muted,fontWeight:700,fontSize:13}}>{up.name}</span>
@@ -1515,7 +1515,7 @@ function PropertiesPage({player,onBuyProperty,onCollect,onUpgrade}) {
                   </div>
                   {isNext&&(
                     <button
-                      style={{...S.btnF(canAfford?C.purple:C.muted,canAfford?"#0d0a18":"#14141e"),opacity:canAfford?1:0.4,marginTop:4}}
+                      style={{...S.btnF(canAfford?C.purple:C.muted,canAfford?"#080e08":"#0d140d"),opacity:canAfford?1:0.4,marginTop:4}}
                       onClick={()=>{
                         if(!canAfford)return showMsg("❌ Not enough cash");
                         onUpgrade(detail, up);
@@ -1623,7 +1623,7 @@ function TravelPage({player, onTravel, onArrive, onCityCrime}) {
   return(<div>
     {confirm&&<Confirm msg={confirm.msg} onYes={()=>{confirm.action();setConfirm(null);}} onNo={()=>setConfirm(null)}/>}
 
-    {travelling&&<div style={{background:"#0a0e1a",border:`1px solid ${C.blue}44`,borderRadius:6,padding:14,marginBottom:12,textAlign:"center"}}>
+    {travelling&&<div style={{background:"#060e06",border:`1px solid ${C.blue}44`,borderRadius:6,padding:14,marginBottom:12,textAlign:"center"}}>
       <div style={{color:C.blue,fontWeight:900,fontSize:14,marginBottom:4}}>IN TRANSIT to {destCity&&destCity.flag} {destCity&&destCity.name}</div>
       {canArrive
         ?<button style={S.btnF(C.green,C.greenBg)} onClick={()=>onArrive(destCity)}>ARRIVE NOW</button>
@@ -1631,7 +1631,7 @@ function TravelPage({player, onTravel, onArrive, onCityCrime}) {
       }
     </div>}
 
-    <div style={S.card({borderColor:C.orange+"44",background:"#0e0a00"})}>
+    <div style={S.card({borderColor:C.orange+"44",background:"#050f05"})}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
         <div>
           <div style={{fontSize:11,color:C.muted,letterSpacing:2,marginBottom:3}}>CURRENT LOCATION</div>
@@ -1651,7 +1651,7 @@ function TravelPage({player, onTravel, onArrive, onCityCrime}) {
 
     <div style={{display:"flex",gap:4,marginBottom:14}}>
       {["map","crimes","loot"].map(t=>(
-        <button key={t} onClick={()=>setTab(t)} style={{padding:"7px 14px",background:tab===t?C.orange:"#14141e",border:`1px solid ${tab===t?C.orange:C.border}`,borderRadius:4,color:tab===t?"#000":C.muted,cursor:"pointer",fontSize:9,letterSpacing:2,textTransform:"uppercase",fontWeight:tab===t?900:400}}>
+        <button key={t} onClick={()=>setTab(t)} style={{padding:"7px 14px",background:tab===t?C.orange:"#0d140d",border:`1px solid ${tab===t?C.orange:C.border}`,borderRadius:4,color:tab===t?"#000":C.muted,cursor:"pointer",fontSize:9,letterSpacing:2,textTransform:"uppercase",fontWeight:tab===t?900:400}}>
           {t==="map"?"MAP":t==="crimes"?"CRIMES":"LOOT"}
         </button>
       ))}
@@ -1665,7 +1665,7 @@ function TravelPage({player, onTravel, onArrive, onCityCrime}) {
         const canAfford=player.cash>=dest.travelCost;
         const onCooldown=cooldownLeft>0;
         const canTravel=!locked&&!isCurrent&&!travelling&&!onCooldown&&canAfford;
-        return(<div key={dest.id} style={S.card({opacity:locked?0.35:1,borderColor:isCurrent?C.orange+"66":isVisited?C.green+"33":C.border,background:isCurrent?"#0e0a00":C.card})}>
+        return(<div key={dest.id} style={S.card({opacity:locked?0.35:1,borderColor:isCurrent?C.orange+"66":isVisited?C.green+"33":C.border,background:isCurrent?"#050f05":C.card})}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
             <div style={{flex:1}}>
               <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
@@ -1691,7 +1691,7 @@ function TravelPage({player, onTravel, onArrive, onCityCrime}) {
             </div>
           </div>
           {!locked&&!isCurrent&&(
-            <button style={{...S.btnF(canTravel?C.orange:C.muted,canTravel?C.orangeBg:"#14141e"),opacity:canTravel?1:0.4}} onClick={()=>canTravel&&travel(dest)} disabled={!canTravel}>
+            <button style={{...S.btnF(canTravel?C.orange:C.muted,canTravel?C.orangeBg:"#0d140d"),opacity:canTravel?1:0.4}} onClick={()=>canTravel&&travel(dest)} disabled={!canTravel}>
               {travelling?"TRAVELLING":onCooldown?"COOLDOWN "+fmtTime(cooldownLeft):!canAfford?"NEED $"+dest.travelCost.toLocaleString():"TRAVEL TO "+dest.name.toUpperCase()}
             </button>
           )}
@@ -1702,7 +1702,7 @@ function TravelPage({player, onTravel, onArrive, onCityCrime}) {
     {tab==="crimes"&&<div>
       {travelling&&<div style={{...S.card(),color:C.muted,textAlign:"center"}}>In transit — arrive first.</div>}
       {!travelling&&<div>
-        <div style={S.card({borderColor:C.orange+"33",background:"#0e0a00"})}>
+        <div style={S.card({borderColor:C.orange+"33",background:"#050f05"})}>
           <div style={S.ct}>CRIMES IN {city.name.toUpperCase()}</div>
           <div style={{color:C.muted,fontSize:11}}>+{city.crimeBonus}% success · x{city.cashMult} cash · x{city.xpMult} XP</div>
           <div style={{color:C.muted,fontSize:10,marginTop:4}}>Nerve: {Math.floor(player.nerve)}/{MAX_NERVE}</div>
@@ -1733,7 +1733,7 @@ function TravelPage({player, onTravel, onArrive, onCityCrime}) {
                   <span style={{color:C.dim}}>10% loot</span>
                 </div>
               </div>
-              <button style={{...S.btn(hasNerve&&!busy?C.orange:C.muted,hasNerve&&!busy?C.orangeBg:"#14141e"),opacity:hasNerve&&!busy?1:0.4,marginLeft:8}} onClick={()=>hasNerve&&!busy&&commitCrime(crimeId)} disabled={!hasNerve||busy}>
+              <button style={{...S.btn(hasNerve&&!busy?C.orange:C.muted,hasNerve&&!busy?C.orangeBg:"#0d140d"),opacity:hasNerve&&!busy?1:0.4,marginLeft:8}} onClick={()=>hasNerve&&!busy&&commitCrime(crimeId)} disabled={!hasNerve||busy}>
                 {busy?"...":"DO IT"}
               </button>
             </div>
@@ -1749,7 +1749,7 @@ function TravelPage({player, onTravel, onArrive, onCityCrime}) {
     </div>}
 
     {tab==="loot"&&<div>
-      <div style={S.card({background:"#060610"})}>
+      <div style={S.card({background:"#040d04"})}>
         <div style={S.ct}>CITY LOOT TABLES</div>
         <div style={{color:C.muted,fontSize:11}}>10% drop chance on successful crimes. Rarer cities = better loot.</div>
       </div>
@@ -1830,7 +1830,7 @@ function BlackMarketPage({player,onBuy}) {
           {soldOut||owned
             ?<div style={{...S.badge(soldOut?C.red:C.green),textAlign:"center",padding:"6px",display:"block"}}>{soldOut?"SOLD OUT":"OWNED"}</div>
             :<button
-              style={{...S.btnF(canAfford?C.purple:C.muted,canAfford?"#0d0018":"#14141e"),fontSize:10,padding:"7px",opacity:canAfford?1:0.4,cursor:canAfford?"pointer":"not-allowed"}}
+              style={{...S.btnF(canAfford?C.purple:C.muted,canAfford?"#0d0018":"#0d140d"),fontSize:10,padding:"7px",opacity:canAfford?1:0.4,cursor:canAfford?"pointer":"not-allowed"}}
               onClick={()=>canAfford&&buyItem(item)}
               disabled={!canAfford}>
               BUY
@@ -1928,7 +1928,7 @@ function PrestigePage({player,onPrestige}) {
           Gain permanent: <span style={{color:C.green}}>+{Math.round((nextPrestige.cashMult-1)*100)}% cash</span> · <span style={{color:C.purple}}>+{Math.round((nextPrestige.xpMult-1)*100)}% XP</span> · <span style={{color:C.orange}}>+{nextPrestige.crimeBonus}% crime success</span>
         </div>
         <button
-          style={{...S.btnF(canPrestige?C.red:C.muted,canPrestige?C.redBg:"#14141e"),opacity:canPrestige?1:0.4,cursor:canPrestige?"pointer":"not-allowed"}}
+          style={{...S.btnF(canPrestige?C.red:C.muted,canPrestige?C.redBg:"#0d140d"),opacity:canPrestige?1:0.4,cursor:canPrestige?"pointer":"not-allowed"}}
           onClick={()=>canPrestige&&setConfirm(true)}
           disabled={!canPrestige}>
           {canPrestige?`⚡ PRESTIGE → ${nextPrestige.label}`:`REACH LVL ${PRESTIGE_REQ_LEVEL} TO PRESTIGE`}
@@ -1955,8 +1955,8 @@ function NotifDrawer({player, onClose, onMarkAll}) {
         <div style={{padding:"16px 16px 10px",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center",flexShrink:0}}>
           <div style={{color:"#fff",fontWeight:900,fontSize:15,letterSpacing:2}}>🔔 NOTIFICATIONS</div>
           <div style={{display:"flex",gap:8,alignItems:"center"}}>
-            {(player.notifUnread||0)>0&&<button style={{...S.btn(C.muted,"#14141e"),padding:"4px 10px",fontSize:9}} onClick={onMarkAll}>MARK ALL READ</button>}
-            <button style={{...S.btn(C.muted,"#14141e"),padding:"4px 10px",fontSize:9}} onClick={onClose}>✕</button>
+            {(player.notifUnread||0)>0&&<button style={{...S.btn(C.muted,"#0d140d"),padding:"4px 10px",fontSize:9}} onClick={onMarkAll}>MARK ALL READ</button>}
+            <button style={{...S.btn(C.muted,"#0d140d"),padding:"4px 10px",fontSize:9}} onClick={onClose}>✕</button>
           </div>
         </div>
         {/* Filter chips */}
@@ -2003,7 +2003,7 @@ function FeedPage({player, onMarkAll}) {
     <div style={S.card({borderColor:C.blue+"44"})}>
       <div style={S.ct}>📋 ACTIVITY FEED</div>
       <div style={{color:C.muted,fontSize:11,marginBottom:10}}>Your full event history — attacks, crimes, income and more.</div>
-      {(player.notifUnread||0)>0&&<button style={S.btn(C.muted,"#14141e")} onClick={onMarkAll}>✅ Mark all read</button>}
+      {(player.notifUnread||0)>0&&<button style={S.btn(C.muted,"#0d140d")} onClick={onMarkAll}>✅ Mark all read</button>}
     </div>
 
     {/* Filter chips */}
@@ -2140,7 +2140,7 @@ function PlayerProfileModal({target, viewer, onClose, onAttack}) {
               {viewerInHosp?"🏥 HOSPITALIZED":"⚔ CHALLENGE"}
             </button>
           )}
-          <button style={{...S.btnF(C.muted,"#14141e"), flex:1}} onClick={onClose}>CLOSE</button>
+          <button style={{...S.btnF(C.muted,"#0d140d"), flex:1}} onClick={onClose}>CLOSE</button>
         </div>
       </div>
     </div>
@@ -2299,12 +2299,12 @@ function AdminPage({player,notify}) {
 
     <div style={{display:"flex",gap:12,marginBottom:14,flexWrap:"wrap"}}>
       {[["👥 PLAYERS",players.length,C.blue],["💰 CASH","$"+totalCash.toLocaleString(),C.green],["🔪 CRIMES",totalCrimes,C.orange]].map(([l,v,c])=>(
-        <div key={l} style={{background:"#0f0f1a",border:`1px solid ${C.border}`,borderRadius:6,padding:"10px 16px"}}>
+        <div key={l} style={{background:"#090f09",border:`1px solid ${C.border}`,borderRadius:6,padding:"10px 16px"}}>
           <div style={{color:c,fontWeight:900,fontSize:16}}>{v}</div>
           <div style={{color:C.muted,fontSize:9}}>{l}</div>
         </div>
       ))}
-      <button style={{...S.btn(C.muted,"#14141e"),marginLeft:"auto"}} onClick={refresh}>↺ REFRESH</button>
+      <button style={{...S.btn(C.muted,"#0d140d"),marginLeft:"auto"}} onClick={refresh}>↺ REFRESH</button>
     </div>
 
     {tab==="players"&&<div>
@@ -2313,7 +2313,7 @@ function AdminPage({player,notify}) {
         <input style={{...S.inp,marginBottom:12}} placeholder="🔍 Search..." value={search} onChange={e=>setSearch(e.target.value)}/>
         {filtered.length===0&&<div style={{color:C.dim}}>No players found.</div>}
         {filtered.map(p=>(
-          <div key={p.username} style={{display:"grid",gridTemplateColumns:"1fr 50px 60px 70px 80px",gap:6,padding:"10px 4px",borderBottom:`1px solid ${C.border}`,background:sel?.username===p.username?"#1a0e00":"transparent",cursor:"pointer",borderRadius:2}} onClick={()=>selectP(p)}>
+          <div key={p.username} style={{display:"grid",gridTemplateColumns:"1fr 50px 60px 70px 80px",gap:6,padding:"10px 4px",borderBottom:`1px solid ${C.border}`,background:sel?.username===p.username?"#1a1a00":"transparent",cursor:"pointer",borderRadius:2}} onClick={()=>selectP(p)}>
             <div><div style={{color:"#fff",fontSize:12,fontWeight:700}}>{p.name}</div><div style={{color:C.muted,fontSize:9}}>@{p.username}</div></div>
             <span style={{color:C.purple,fontWeight:700}}>{p.level}</span>
             <span style={{color:C.orange}}>{p.reputation}</span>
@@ -2448,7 +2448,7 @@ function JailPage({player,onBail,onBreakout}) {
           </div>
           <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
             <button
-              style={{...S.btn(canAffordBail?C.gold:C.muted,canAffordBail?C.goldBg:"#14141e"),opacity:canAffordBail?1:0.4}}
+              style={{...S.btn(canAffordBail?C.gold:C.muted,canAffordBail?C.goldBg:"#0d140d"),opacity:canAffordBail?1:0.4}}
               onClick={()=>canAffordBail&&onBail(bail)}
               disabled={!canAffordBail}>
               💰 PAY BAIL ${bail.toLocaleString()}
@@ -2825,10 +2825,10 @@ function Game({initialPlayer,onLogout}) {
         </div>
         <div style={{display:"flex",gap:8,alignItems:"center"}}>
           <span style={{color:C.green,fontWeight:700,fontSize:12}}>${player.cash.toLocaleString()}</span>
-          <button style={{...S.btn(C.muted,"#14141e"),padding:"4px 10px",fontSize:9,position:"relative"}} onClick={()=>setShowNotifs(true)}>
+          <button style={{...S.btn(C.muted,"#0d140d"),padding:"4px 10px",fontSize:9,position:"relative"}} onClick={()=>setShowNotifs(true)}>
             🔔{(player.notifUnread||0)>0&&<span style={{position:"absolute",top:-4,right:-4,background:C.red,color:"#fff",borderRadius:"50%",fontSize:8,width:14,height:14,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900}}>{player.notifUnread>9?"9+":player.notifUnread}</span>}
           </button>
-          <button style={{...S.btn(C.muted,"#14141e"),padding:"4px 10px",fontSize:9}} onClick={onLogout}>OUT</button>
+          <button style={{...S.btn(C.muted,"#0d140d"),padding:"4px 10px",fontSize:9}} onClick={onLogout}>OUT</button>
         </div>
       </div>
 
