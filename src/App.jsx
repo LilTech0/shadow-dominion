@@ -2581,8 +2581,7 @@ function AdminLogin({onLogin}) {
 // ============================================================
 // 🔧 SETUP: Replace these with your Supabase project values
 // Dashboard → Settings → API
-const SUPABASE_URL = "https://YOUR_PROJECT.supabase.co";
-const SUPABASE_ANON_KEY = "YOUR_ANON_KEY";
+
 
 // Lazy-init Supabase client (loaded from CDN or npm)
 let _sb = null;
