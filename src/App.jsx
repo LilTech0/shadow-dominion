@@ -311,27 +311,6 @@ function useTheme() {
   return dark;
 }
 
-const S = {
-  app: { minHeight:"100vh", background:C.bg, color:C.text, fontFamily:"'Courier New',monospace", fontSize:13 },
-  authWrap: { display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", minHeight:"100vh", padding:20, background:`radial-gradient(ellipse at center,#001a08 0%,${C.bg} 70%)` },
-  authBox: { background:C.card, border:`1px solid ${C.border2}`, borderRadius:8, padding:32, width:"100%", maxWidth:400 },
-  card: (x={}) => ({ background:C.card, border:`1px solid ${C.border}`, borderRadius:6, padding:16, marginBottom:12, ...x }),
-  ct: { color:C.red, fontSize:10, letterSpacing:3, textTransform:"uppercase", marginBottom:12, fontWeight:700 },
-  inp: { width:"100%", background:"#060d06", border:`1px solid ${C.border2}`, borderRadius:4, padding:"10px 12px", color:C.text, fontSize:13, outline:"none", boxSizing:"border-box", marginBottom:10 },
-  btn: (c=C.red,b=C.redBg) => ({ background:b, border:`1px solid ${c}44`, borderRadius:4, padding:"9px 18px", color:c, fontSize:11, letterSpacing:2, cursor:"pointer", fontWeight:700 }),
-  btnF: (c=C.red,b=C.redBg) => ({ width:"100%", background:b, border:`1px solid ${c}44`, borderRadius:4, padding:"11px", color:c, fontSize:11, letterSpacing:2, cursor:"pointer", fontWeight:700 }),
-  badge: (c) => ({ display:"inline-block", padding:"2px 7px", borderRadius:10, fontSize:9, background:c+"18", color:c, border:`1px solid ${c}33`, letterSpacing:1 }),
-  bar: (p,c) => ({ height:"100%", width:`${Math.min(100,Math.max(0,p))}%`, background:`linear-gradient(90deg,${c}88,${c})`, transition:"width 0.4s", boxShadow:`0 0 6px ${c}66` }),
-  barW: { background:"#060d06", borderRadius:2, height:10, overflow:"hidden", flex:1, border:`1px solid ${C.border}`, position:"relative" },
-  row: { display:"flex", gap:8, alignItems:"center", marginBottom:6 },
-  g2: { display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 },
-  logB: { background:"#040d04", border:`1px solid ${C.dim}`, borderRadius:4, padding:10, maxHeight:180, overflowY:"auto", fontSize:11, lineHeight:1.9 },
-  nav: (a) => ({ padding:"12px 8px", cursor:"pointer", fontSize:9, letterSpacing:1, color:a?"#fff":C.muted, background:a?C.red+"33":"transparent", borderBottom:`2px solid ${a?C.red:"transparent"}`, display:"flex", flexDirection:"column", alignItems:"center", gap:3, flex:1, textAlign:"center", fontWeight:a?700:400, userSelect:"none" }),
-  topBar: { background:"#080f08", borderBottom:`1px solid ${C.border}`, padding:"6px 14px", display:"flex", justifyContent:"space-between", alignItems:"center", flexShrink:0 },
-  statBar: { background:"#090f09", borderBottom:`1px solid ${C.border}`, padding:"8px 14px", flexShrink:0 },
-  navBar: { background:"#0b0f0b", borderBottom:`1px solid ${C.border}`, display:"flex", flexShrink:0, overflowX:"auto" },
-};
-
 // ============================================================
 // SHARED COMPONENTS
 // ============================================================
