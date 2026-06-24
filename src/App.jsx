@@ -1711,152 +1711,7 @@ function TravelPage({player, onTravel, onArrive, onCityCrime}) {
                 <div>
                   <div style={{display:"flex",alignItems:"center",gap:6}}>
                     <span style={{color:isCurrent?C.orange:"#fff",fontWeight:900,fontSize:15}}>{dest.name}</span>
-                    {isCurrent&&<span style={S.badge(C.orange)}>HERE</span>}
-                    {isVisited&&!isCurrent&&<span style={S.badge(C.green)}>VISITED</span>}
-                    {locked&&<span style={S.badge(C.red)}>LVL {dest.unlockLevel}</span>}
-                  </div>
-                  <div style={{color:C.muted,fontSize:11,marginTop:2}}>{dest.desc}</div>
-                </div>
-              </div>
-              <div style={{display:"flex",gap:12,fontSize:11,flexWrap:"wrap",marginTop:4}}>
-                {dest.crimeBonus>0&&<span style={{color:C.green}}>+{dest.crimeBonus}% crime</span>}
-                {dest.cashMult>1&&<span style={{color:C.gold}}>x{dest.cashMult} cash</span>}
-                {dest.xpMult>1&&<span style={{color:C.purple}}>x{dest.xpMult} XP</span>}
-                {dest.travelCost>0&&<span style={{color:canAfford?C.muted:C.red}}>$${dest.travelCost.toLocaleString()}</span>}
-                {dest.travelHours>0&&<span style={{color:C.muted}}>{dest.travelHours}h travel</span>}
-                {dest.travelHours===0&&<span style={{color:C.green}}>Instant</span>}
-              </div>
-            </div>
-          </div>
-          {!locked&&!isCurrent&&(
-            <button style={{...S.btnF(canTravel?C.orange:C.muted,canTravel?C.orangeBg:"#0d140d"),opacity:canTravel?1:0.4}} onClick={()=>canTravel&&travel(dest)} disabled={!canTravel}>
-              {travelling?"TRAVELLING":onCooldown?"COOLDOWN "+fmtTime(cooldownLeft):!canAfford?"NEED $"+dest.travelCost.toLocaleString():"TRAVEL TO "+dest.name.toUpperCase()}
-            </button>
-          )}
-        </div>);
-      })}
-    </div>}
-
-    {tab==="crimes"&&<div>
-      {travelling&&<div style={{...S.card(),color:C.muted,textAlign:"center"}}>In transit — arrive first.</div>}
-      {!travelling&&<div>
-        <div style={S.card({borderColor:C.orange+"33",background:"#050f05"})}>
-          <div style={S.ct}>CRIMES IN {city.name.toUpperCase()}</div>
-          <div style={{color:C.muted,fontSize:11}}>+{city.crimeBonus}% success · x{city.cashMult} cash · x{city.xpMult} XP</div>
-          <div style={{color:C.muted,fontSize:10,marginTop:4}}>Nerve: {Math.floor(player.nerve)}/{MAX_NERVE}</div>
-        </div>
-        {city.crimes.map(crimeId=>{
-          const ALLC=[
-            {id:"pickpocket", name:"Pickpocket",   baseChance:70,baseReward:200,  nerve:3, xp:10,  difficulty:5 },
-            {id:"shoplifting",name:"Shoplifting",  baseChance:65,baseReward:400,  nerve:5, xp:20,  difficulty:10},
-            {id:"mugging",    name:"Mugging",      baseChance:55,baseReward:700,  nerve:8, xp:35,  difficulty:18},
-            {id:"carjacking", name:"Car Theft",    baseChance:50,baseReward:1000, nerve:12,xp:60,  difficulty:20},
-            {id:"robbery",    name:"Armed Robbery",baseChance:40,baseReward:2500, nerve:18,xp:100, difficulty:30},
-            {id:"heist",      name:"Bank Heist",   baseChance:25,baseReward:8000, nerve:30,xp:250, difficulty:50},
-          ];
-          const cr=ALLC.find(c=>c.id===crimeId);
-          if(!cr)return null;
-          const chance=Math.min(95,Math.max(5,cr.baseChance+Math.floor(player.level*1.5)+(city.crimeBonus||0)-cr.difficulty));
-          const hasNerve=player.nerve>=cr.nerve;
-          const estCash=Math.floor(cr.baseReward*city.cashMult);
-          return(<div key={crimeId} style={S.card({opacity:hasNerve?1:0.45})}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
-              <div style={{flex:1}}>
-                <div style={{color:"#fff",fontWeight:700,fontSize:13,marginBottom:3}}>{cr.name}</div>
-                <div style={{display:"flex",gap:12,fontSize:11,flexWrap:"wrap"}}>
-                  <span style={{color:chance>=60?C.green:chance>=35?C.orange:C.red}}>{chance}%</span>
-                  <span style={{color:C.gold}}>~${estCash.toLocaleString()}</span>
-                  <span style={{color:C.purple}}>+{Math.floor(cr.xp*city.xpMult)}xp</span>
-                  <span style={{color:hasNerve?C.muted:C.red}}>{cr.nerve} nerve</span>
-                  <span style={{color:C.dim}}>10% loot</span>
-                </div>
-              </div>
-              <button style={{...S.btn(hasNerve&&!busy?C.orange:C.muted,hasNerve&&!busy?C.orangeBg:"#0d140d"),opacity:hasNerve&&!busy?1:0.4,marginLeft:8}} onClick={()=>hasNerve&&!busy&&commitCrime(crimeId)} disabled={!hasNerve||busy}>
-                {busy?"...":"DO IT"}
-              </button>
-            </div>
-          </div>);
-        })}
-        {log.length>0&&<div style={S.card()}>
-          <div style={S.ct}>ACTIVITY LOG</div>
-          <div style={S.logB}>
-            {log.map((l,i)=><div key={i} style={{color:l.startsWith("SUCCESS")?C.green:l.startsWith("FAILED")?C.red:C.muted}}>{l}</div>)}
-          </div>
-        </div>}
-      </div>}
-    </div>}
-
-    {tab==="loot"&&<div>
-      <div style={S.card({background:"#040d04"})}>
-        <div style={S.ct}>CITY LOOT TABLES</div>
-        <div style={{color:C.muted,fontSize:11}}>10% drop chance on successful crimes. Rarer cities = better loot.</div>
-      </div>
-      {CITIES.filter(c=>visited.includes(c.id)||(player.level>=c.unlockLevel)).map(dest=>{
-        const isHere=dest.id===city.id;
-        return(<div key={dest.id} style={S.card({borderColor:isHere?C.orange+"44":C.border})}>
-          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
-            <span style={{fontSize:18}}>{dest.flag}</span>
-            <span style={{color:isHere?C.orange:"#fff",fontWeight:700}}>{dest.name}</span>
-            {isHere&&<span style={S.badge(C.orange)}>CURRENT</span>}
-          </div>
-          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-            {dest.lootTable.map(id=>{
-              const item=ALL_LOOT.find(i=>i.id===id);
-              if(!item)return null;
-              const rc=RARITY_C[item.rarity]||C.muted;
-              return(<div key={id} style={{padding:"5px 9px",background:rc+"11",border:`1px solid ${rc}33`,borderRadius:4,fontSize:10}}>
-                <span style={{color:rc,fontWeight:700}}>{item.name}</span>
-                <span style={{color:C.dim,fontSize:9,marginLeft:4}}>{item.rarity}</span>
-              </div>);
-            })}
-          </div>
-        </div>);
-      })}
-    </div>}
-  </div>);
-}
-
-// ============================================================
-// BLACK MARKET PAGE
-// ============================================================
-function BlackMarketPage({player,onBuy}) {
-  const [purchased,setPurchased]=useState({});
-  const items=getDailyBMItems(player.bmSeed||Date.now());
-  const RC={common:C.muted,rare:C.blue,legendary:C.gold};
-  const prestige=getPrestige(player.prestigeTier||0);
-
-  const today=new Date().toDateString();
-  const [lastDay,setLastDay]=useState(today);
-  useEffect(()=>{ if(today!==lastDay){setPurchased({});setLastDay(today);} },[today,lastDay]);
-
-  function buyItem(item) {
-    const bought=purchased[item.id]||0;
-    if(bought>=item.stock)return;
-    if(player.cash<item.price)return;
-    onBuy({...item, isBM:true});
-    setPurchased(p=>({...p,[item.id]:(p[item.id]||0)+1}));
-  }
-
-  return(<div>
-    <div style={S.card({borderColor:C.purple+"44"})}>
-      <div style={S.ct}>🕵 BLACK MARKET</div>
-      <div style={{color:C.muted,fontSize:11,marginBottom:6}}>
-        Exclusive gear. Refreshes daily at midnight. Limited stock — first come first served.
-      </div>
-      {prestige&&<div style={{color:prestige.color,fontSize:11}}>✨ {prestige.label}: +{prestige.crimeBonus}% crime bonus active</div>}
-    </div>
-
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-      {items.map(item=>{
-        const bought=purchased[item.id]||0;
-        const remaining=item.stock-bought;
-        const canAfford=player.cash>=item.price;
-        const owned=player.inventory?.includes(item.id);
-        const soldOut=remaining<=0;
-        return(<div key={item.id} style={S.card({borderColor:soldOut?C.dim:item.rarity==="legendary"?C.gold+"44":C.border,opacity:soldOut?0.5:1})}>
-          <div style={{marginBottom:6}}>
-            <div style={{color:soldOut?C.dim:item.rarity==="legendary"?C.gold:item.rarity==="rare"?C.blue:"#fff",fontWeight:700,fontSize:12,marginBottom:2}}>{item.name}</div>
-            <span style={S.badge(RC[item.rarity]||C.muted)}>{item.rarity}</span>
+                  <span style={S.badge(RC[item.rarity]||C.muted)}>{item.rarity}</span>
           </div>
           <div style={{fontSize:10,color:C.muted,marginBottom:6}}>
             {item.type==="weapon"?`+${item.weaponDmg} ATK`:item.type==="armor"?`+${item.armorRating} DEF`:item.type==="tool"?`+${item.crimeBonus} CRIME`:"CONSUMABLE"}
@@ -2928,6 +2783,418 @@ create index on chat_messages (created_at);`}</pre>
 // ============================================================
 // MAIN GAME — NAV now includes properties, blackmarket, prestige
 // ============================================================
+// ============================================================
+// MULTIPLAYER — WORLD MAP, LIVE ATTACKS, SYNDICATE WARS
+// ============================================================
+
+// ── Supabase helpers ─────────────────────────────────────────
+async function sbInsert(table, row) {
+  const { error } = await getSB().from(table).insert(row);
+  return error;
+}
+async function sbSelect(table, filters={}, order=null, limit=50) {
+  let q = getSB().from(table).select("*");
+  Object.entries(filters).forEach(([k,v])=>{ q=q.eq(k,v); });
+  if(order) q=q.order(order.col,{ascending:order.asc??false});
+  if(limit) q=q.limit(limit);
+  const { data, error } = await q;
+  return { data:data||[], error };
+}
+
+// ── useWarEvents hook — listens for war events in real-time ──
+function useWarEvents(syndicateName, onEvent) {
+  useEffect(()=>{
+    if(!syndicateName) return;
+    const sb = getSB();
+    const ch = sb.channel(`wars:${syndicateName}`)
+      .on("postgres_changes",{ event:"INSERT", schema:"public", table:"war_events",
+        filter:`defender_syndicate=eq.${syndicateName}` },
+        payload => onEvent(payload.new))
+      .subscribe();
+    return ()=>ch.unsubscribe();
+  },[syndicateName]);
+}
+
+// ── useAttackEvents hook — listen for incoming attacks ───────
+function useAttackEvents(username, onAttack) {
+  useEffect(()=>{
+    if(!username) return;
+    const sb = getSB();
+    const ch = sb.channel(`attacks:${username}`)
+      .on("postgres_changes",{ event:"INSERT", schema:"public", table:"player_attacks",
+        filter:`defender=eq.${username}` },
+        payload => onAttack(payload.new))
+      .subscribe();
+    return ()=>ch.unsubscribe();
+  },[username]);
+}
+
+// ============================================================
+// WORLD MAP PAGE — see online players in each city
+// ============================================================
+const CITY_COORDS = {
+  hometown:   { x:20,  y:60,  name:"Maplewood",  flag:"🏙" },
+  portclay:   { x:40,  y:35,  name:"Port Clay",   flag:"⚓" },
+  neonridge:  { x:65,  y:50,  name:"Neon Ridge",  flag:"🌆" },
+  irongate:   { x:55,  y:75,  name:"Iron Gate",   flag:"🏭" },
+  ghosthaven: { x:82,  y:25,  name:"Ghost Haven", flag:"💀" },
+};
+
+function WorldMapPage({ player, onlineUsers, onAttackPlayer }) {
+  const [selectedCity, setSelectedCity] = useState(null);
+  const [tab, setTab] = useState("map");
+
+  const myCity = player.currentCity || "hometown";
+  const cityGroups = {};
+  onlineUsers.forEach(u => {
+    const c = u.city || "hometown";
+    if(!cityGroups[c]) cityGroups[c] = [];
+    cityGroups[c].push(u);
+  });
+
+  const selectedUsers = selectedCity ? (cityGroups[selectedCity]||[]) : [];
+
+  return(<div>
+    <div style={{display:"flex",gap:4,marginBottom:14}}>
+      {["map","players"].map(t=>(
+        <button key={t} onClick={()=>setTab(t)} style={{padding:"7px 14px",background:tab===t?C.orange:"#0d140d",border:`1px solid ${tab===t?C.orange:C.border}`,borderRadius:4,color:tab===t?"#000":C.muted,cursor:"pointer",fontSize:9,letterSpacing:2,textTransform:"uppercase",fontWeight:tab===t?900:400}}>
+          {t==="map"?"🗺 WORLD MAP":"👥 ALL PLAYERS"}
+        </button>
+      ))}
+    </div>
+
+    {tab==="map"&&<div>
+      {/* SVG world map */}
+      <div style={{...S.card({borderColor:C.orange+"44",background:"#050e05"}),padding:0,overflow:"hidden"}}>
+        <svg viewBox="0 0 100 100" style={{width:"100%",height:280,display:"block"}}>
+          {/* Grid lines */}
+          {[20,40,60,80].map(v=>(
+            <g key={v}>
+              <line x1={v} y1={0} x2={v} y2={100} stroke={C.border} strokeWidth="0.3" strokeDasharray="1,2"/>
+              <line x1={0} y1={v} x2={100} y2={v} stroke={C.border} strokeWidth="0.3" strokeDasharray="1,2"/>
+            </g>
+          ))}
+          {/* City connections */}
+          {[["hometown","portclay"],["portclay","neonridge"],["portclay","irongate"],["neonridge","ghosthaven"],["irongate","ghosthaven"]].map(([a,b])=>{
+            const ca=CITY_COORDS[a], cb=CITY_COORDS[b];
+            return <line key={a+b} x1={ca.x} y1={ca.y} x2={cb.x} y2={cb.y} stroke={C.dim} strokeWidth="0.4"/>;
+          })}
+          {/* Cities */}
+          {Object.entries(CITY_COORDS).map(([id,c])=>{
+            const count = (cityGroups[id]||[]).length;
+            const isHere = id===myCity;
+            const isSelected = id===selectedCity;
+            const locked = player.level < (CITIES?.find(x=>x.id===id)?.unlockLevel||1);
+            return(
+              <g key={id} onClick={()=>setSelectedCity(selectedCity===id?null:id)} style={{cursor:"pointer"}}>
+                <circle cx={c.x} cy={c.y} r={isSelected?5:4} fill={isHere?C.green:locked?C.dim:C.orange} opacity={locked?0.3:1}
+                  stroke={isSelected?C.text:"none"} strokeWidth="0.5"/>
+                {count>0&&<circle cx={c.x+3} cy={c.y-3} r={2} fill={C.green}/>}
+                {count>0&&<text x={c.x+3} y={c.y-2} fontSize="2.2" fill="#000" textAnchor="middle" fontWeight="bold">{count}</text>}
+                <text x={c.x} y={c.y+7} fontSize="3" fill={isHere?C.green:C.muted} textAnchor="middle">{c.flag} {c.name}</text>
+                {isHere&&<circle cx={c.x} cy={c.y} r={7} fill="none" stroke={C.green} strokeWidth="0.4" opacity="0.5">
+                  <animate attributeName="r" values="4;8;4" dur="2s" repeatCount="indefinite"/>
+                  <animate attributeName="opacity" values="0.5;0;0.5" dur="2s" repeatCount="indefinite"/>
+                </circle>}
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+
+      {/* Selected city panel */}
+      {selectedCity&&<div style={S.card({borderColor:C.orange+"33"})}>
+        <div style={S.ct}>{CITY_COORDS[selectedCity]?.flag} {CITY_COORDS[selectedCity]?.name} — {selectedUsers.length} online</div>
+        {selectedUsers.length===0&&<div style={{color:C.muted,fontSize:11}}>No one here right now.</div>}
+        {selectedUsers.map(u=>{
+          const isMe = u.username===player.username;
+          const sameSyn = u.syndicate&&u.syndicate===player.syndicate;
+          return(
+            <div key={u.username} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:`1px solid ${C.border}`}}>
+              <div>
+                <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                  <span style={{width:6,height:6,borderRadius:"50%",background:C.green,display:"inline-block"}}/>
+                  <span style={{color:isMe?C.green:sameSyn?C.blue:"#fff",fontWeight:700,fontSize:12}}>{u.name}{isMe?" (you)":""}</span>
+                  {sameSyn&&<span style={S.badge(C.blue)}>ALLY</span>}
+                </div>
+                <div style={{color:C.muted,fontSize:10,marginTop:2}}>Lv{u.level} · @{u.username}</div>
+              </div>
+              {!isMe&&!sameSyn&&(
+                <button style={{...S.btn(C.red,C.redBg),padding:"5px 10px",fontSize:9}} onClick={()=>onAttackPlayer(u)}>⚔ ATTACK</button>
+              )}
+              {!isMe&&sameSyn&&<span style={{color:C.muted,fontSize:9}}>SYNDICATE</span>}
+            </div>
+          );
+        })}
+      </div>}
+
+      {/* City legend */}
+      <div style={S.card()}>
+        <div style={S.ct}>📍 CITY STATUS</div>
+        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+          {Object.entries(CITY_COORDS).map(([id,c])=>{
+            const count=(cityGroups[id]||[]).length;
+            const isHere=id===myCity;
+            return(
+              <div key={id} onClick={()=>setSelectedCity(id)} style={{padding:"6px 10px",background:isHere?C.green+"11":"#0d140d",border:`1px solid ${isHere?C.green:C.border}`,borderRadius:4,cursor:"pointer",minWidth:80}}>
+                <div style={{fontSize:13}}>{c.flag}</div>
+                <div style={{color:isHere?C.green:"#fff",fontSize:10,fontWeight:700}}>{c.name}</div>
+                <div style={{color:count>0?C.green:C.dim,fontSize:9}}>{count} online</div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>}
+
+    {tab==="players"&&<div>
+      <div style={S.card({borderColor:C.green+"33"})}>
+        <div style={S.ct}>🟢 ALL ONLINE PLAYERS ({onlineUsers.length})</div>
+        {onlineUsers.length===0&&<div style={{color:C.muted,fontSize:11}}>No one online.</div>}
+        {onlineUsers.map(u=>{
+          const isMe=u.username===player.username;
+          const sameSyn=u.syndicate&&u.syndicate===player.syndicate;
+          const cityInfo=CITY_COORDS[u.city||"hometown"];
+          return(
+            <div key={u.username} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${C.border}`}}>
+              <div>
+                <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:3}}>
+                  <span style={{width:7,height:7,borderRadius:"50%",background:C.green,display:"inline-block",boxShadow:`0 0 5px ${C.green}`}}/>
+                  <span style={{color:isMe?C.green:sameSyn?C.blue:"#fff",fontWeight:700,fontSize:12}}>{u.name}</span>
+                  {isMe&&<span style={S.badge(C.green)}>YOU</span>}
+                  {sameSyn&&!isMe&&<span style={S.badge(C.blue)}>ALLY</span>}
+                </div>
+                <div style={{color:C.muted,fontSize:10}}>Lv{u.level} · 📍{cityInfo?.name||u.city}{u.syndicate?` · 🏴${u.syndicate}`:""}</div>
+              </div>
+              {!isMe&&!sameSyn&&(
+                <button style={{...S.btn(C.red,C.redBg),padding:"5px 10px",fontSize:9}} onClick={()=>onAttackPlayer(u)}>⚔ ATK</button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>}
+  </div>);
+}
+
+// ============================================================
+// SYNDICATE WARS PAGE
+// ============================================================
+const WAR_DURATION_MS = 24 * 60 * 60 * 1000; // 24 hours
+const WAR_COST = 500000; // treasury cost to declare war
+
+function SyndicateWarsPage({ player, onlineUsers, notify }) {
+  const [wars, setWars]         = useState([]);
+  const [loading, setLoading]   = useState(true);
+  const [declaring, setDeclaring] = useState(false);
+  const [target, setTarget]     = useState(null);
+  const [confirm, setConfirm]   = useState(null);
+  const [log, setLog]           = useState([]);
+  const [tab, setTab]           = useState("active");
+
+  const syndicates = getSyndicates();
+  const mySyn = syndicates.find(s=>s.name===player.syndicate);
+  const isLeader = mySyn?.leader===player.username;
+  const isOfficer = (mySyn?.officers||[]).includes(player.username);
+  const canDeclare = isLeader||isOfficer;
+
+  // Load wars
+  async function loadWars() {
+    setLoading(true);
+    const { data } = await sbSelect("syndicate_wars", {}, { col:"created_at", asc:false }, 20);
+    setWars(data);
+    setLoading(false);
+  }
+
+  useEffect(()=>{ loadWars(); },[]);
+
+  // Listen for war events involving my syndicate
+  useWarEvents(player.syndicate, (event)=>{
+    setLog(l=>[event,...l].slice(0,30));
+    notify(`⚔ WAR: ${event.attacker_name} attacked ${event.defender_name}!`);
+    loadWars();
+  });
+
+  async function declareWar(enemySyn) {
+    if(!mySyn) return;
+    if((mySyn.treasury||0)<WAR_COST) { notify("❌ Need $500,000 in treasury"); return; }
+    setDeclaring(true);
+    const warRow = {
+      attacker_syndicate: mySyn.name,
+      defender_syndicate: enemySyn.name,
+      attacker_score: 0,
+      defender_score: 0,
+      status: "active",
+      ends_at: new Date(Date.now()+WAR_DURATION_MS).toISOString(),
+      declared_by: player.username,
+    };
+    const err = await sbInsert("syndicate_wars", warRow);
+    if(err) { notify("❌ "+err.message); setDeclaring(false); return; }
+    // Deduct from treasury
+    const updated = syndicates.map(s=>s.name===mySyn.name?{...s,treasury:(s.treasury||0)-WAR_COST,wars:(s.wars||0)+1}:s);
+    saveSyndicates(updated);
+    notify(`⚔ WAR DECLARED on ${enemySyn.name}!`);
+    setTarget(null); setDeclaring(false); setTab("active");
+    loadWars();
+  }
+
+  async function strikeEnemy(war) {
+    if(player.energy<10) { notify("❌ Need 10 energy"); return; }
+    const isAttacker = war.attacker_syndicate===player.syndicate;
+    const scoreField = isAttacker?"attacker_score":"defender_score";
+    const dmg = Math.floor(5+Math.random()*10+player.level*0.5);
+
+    // Log the strike
+    await sbInsert("war_events",{
+      war_id: war.id,
+      attacker_syndicate: player.syndicate,
+      defender_syndicate: isAttacker?war.defender_syndicate:war.attacker_syndicate,
+      attacker_name: player.name,
+      defender_name: isAttacker?war.defender_syndicate:war.attacker_syndicate,
+      damage: dmg,
+      created_at: new Date().toISOString(),
+    });
+
+    // Update score
+    await getSB().from("syndicate_wars").update({[scoreField]:(isAttacker?war.attacker_score:war.defender_score)+dmg}).eq("id",war.id);
+
+    setPlayer && notify(`⚔ Strike! +${dmg} war points`);
+    loadWars();
+  }
+
+  const activeWars = wars.filter(w=>w.status==="active"&&(w.attacker_syndicate===player.syndicate||w.defender_syndicate===player.syndicate));
+  const allWars = wars.filter(w=>w.attacker_syndicate===player.syndicate||w.defender_syndicate===player.syndicate);
+  const otherSyns = syndicates.filter(s=>s.name!==player.syndicate);
+
+  function fmtTimeLeft(endsAt) {
+    const ms = new Date(endsAt)-Date.now();
+    if(ms<=0) return "ENDED";
+    const h=Math.floor(ms/3600000), m=Math.floor((ms%3600000)/60000);
+    return `${h}h ${m}m`;
+  }
+
+  return(<div>
+    {confirm&&<Confirm msg={confirm.msg} onYes={()=>{confirm.action();setConfirm(null);}} onNo={()=>setConfirm(null)}/>}
+
+    {!player.syndicate&&<div style={{...S.card(),color:C.muted,textAlign:"center",padding:24}}>Join a syndicate to participate in wars.</div>}
+
+    {player.syndicate&&<div>
+      {/* Tab bar */}
+      <div style={{display:"flex",gap:4,marginBottom:14,flexWrap:"wrap"}}>
+        {["active","declare","history"].map(t=>(
+          <button key={t} onClick={()=>setTab(t)} style={{padding:"7px 14px",background:tab===t?C.red:"#0d140d",border:`1px solid ${tab===t?C.red:C.border}`,borderRadius:4,color:tab===t?C.redBg:C.muted,cursor:"pointer",fontSize:9,letterSpacing:2,textTransform:"uppercase",fontWeight:tab===t?900:400}}>
+            {t==="active"?"⚔ ACTIVE WARS":t==="declare"?"📣 DECLARE WAR":"📋 HISTORY"}
+            {t==="active"&&activeWars.length>0&&<span style={{marginLeft:5,background:C.red,color:"#fff",borderRadius:8,fontSize:8,padding:"1px 4px"}}>{activeWars.length}</span>}
+          </button>
+        ))}
+      </div>
+
+      {/* ── ACTIVE WARS ── */}
+      {tab==="active"&&<div>
+        {loading&&<div style={{color:C.muted,fontSize:12,padding:20,textAlign:"center"}}>Loading...</div>}
+        {!loading&&activeWars.length===0&&<div style={{...S.card(),color:C.muted,textAlign:"center",padding:24}}>
+          No active wars. <span style={{color:C.red,cursor:"pointer"}} onClick={()=>setTab("declare")}>Declare one →</span>
+        </div>}
+        {activeWars.map(war=>{
+          const isAttacker=war.attacker_syndicate===player.syndicate;
+          const myScore=isAttacker?war.attacker_score:war.defender_score;
+          const theirScore=isAttacker?war.defender_score:war.attacker_score;
+          const enemy=isAttacker?war.defender_syndicate:war.attacker_syndicate;
+          const total=myScore+theirScore||1;
+          const myPct=Math.round((myScore/total)*100);
+          return(
+            <div key={war.id} style={S.card({borderColor:C.red+"44",background:"#0e0404"})}>
+              <div style={{display:"flex",justifyContent:"space-between",marginBottom:10}}>
+                <div>
+                  <div style={{color:C.red,fontWeight:900,fontSize:13}}>⚔ {mySyn?.name} vs {enemy}</div>
+                  <div style={{color:C.muted,fontSize:10,marginTop:2}}>⏱ {fmtTimeLeft(war.ends_at)} remaining</div>
+                </div>
+                <div style={{textAlign:"right"}}>
+                  <div style={{color:myScore>theirScore?C.green:C.red,fontWeight:900,fontSize:16}}>{myScore}</div>
+                  <div style={{color:C.muted,fontSize:9}}>our pts</div>
+                </div>
+              </div>
+              {/* Score bar */}
+              <div style={{display:"flex",gap:0,marginBottom:10,borderRadius:4,overflow:"hidden",height:16}}>
+                <div style={{width:myPct+"%",background:C.green,transition:"width 0.4s",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,color:"#000",fontWeight:700}}>{myPct>15?myPct+"%":""}</div>
+                <div style={{flex:1,background:C.red,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,color:"#fff",fontWeight:700}}>{100-myPct>15?(100-myPct)+"%":""}</div>
+              </div>
+              <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:C.muted,marginBottom:10}}>
+                <span style={{color:C.green}}>{mySyn?.name}: {myScore} pts</span>
+                <span style={{color:C.red}}>{enemy}: {theirScore} pts</span>
+              </div>
+              <button style={{...S.btnF(C.red,C.redBg),opacity:player.energy>=10?1:0.4}}
+                onClick={()=>player.energy>=10?setConfirm({msg:`Strike ${enemy}? Costs 10 energy.`,action:()=>strikeEnemy(war)}):notify("❌ Need 10 energy")}
+                disabled={player.energy<10}>
+                ⚔ STRIKE {enemy.toUpperCase()} — 10 ENERGY
+              </button>
+            </div>
+          );
+        })}
+      </div>}
+
+      {/* ── DECLARE WAR ── */}
+      {tab==="declare"&&<div>
+        {!canDeclare&&<div style={{...S.card(),color:C.muted}}>Only leaders and officers can declare war.</div>}
+        {canDeclare&&<div>
+          <div style={S.card({borderColor:C.red+"33"})}>
+            <div style={S.ct}>📣 DECLARE WAR</div>
+            <div style={{color:C.muted,fontSize:11,lineHeight:1.7,marginBottom:8}}>
+              Cost: <span style={{color:(mySyn?.treasury||0)>=WAR_COST?C.green:C.red,fontWeight:700}}>$500,000</span> from treasury<br/>
+              Treasury: <span style={{color:C.gold,fontWeight:700}}>${(mySyn?.treasury||0).toLocaleString()}</span><br/>
+              Duration: 24 hours — most points wins.
+            </div>
+          </div>
+          {otherSyns.length===0&&<div style={{...S.card(),color:C.muted}}>No other syndicates to war with.</div>}
+          {otherSyns.map(s=>{
+            const alreadyAtWar=activeWars.some(w=>w.attacker_syndicate===s.name||w.defender_syndicate===s.name);
+            return(
+              <div key={s.name} style={S.card({borderColor:alreadyAtWar?C.red+"44":C.border})}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <div>
+                    <div style={{color:"#fff",fontWeight:700,fontSize:13}}>{s.name}</div>
+                    <div style={{color:C.muted,fontSize:10}}>Lv{s.level||1} · {s.members.length} members · 💰${(s.treasury||0).toLocaleString()}</div>
+                    {alreadyAtWar&&<div style={{color:C.red,fontSize:9,marginTop:2}}>⚔ ALREADY AT WAR</div>}
+                  </div>
+                  {!alreadyAtWar&&<button
+                    style={{...S.btn(C.red,C.redBg),opacity:canDeclare&&(mySyn?.treasury||0)>=WAR_COST?1:0.4}}
+                    disabled={!canDeclare||(mySyn?.treasury||0)<WAR_COST||declaring}
+                    onClick={()=>setConfirm({msg:`Declare war on "${s.name}"?\n\nCost: $500,000 from treasury\nDuration: 24 hours`,action:()=>declareWar(s)})}>
+                    {declaring?"...":"⚔ DECLARE"}
+                  </button>}
+                </div>
+              </div>
+            );
+          })}
+        </div>}
+      </div>}
+
+      {/* ── HISTORY ── */}
+      {tab==="history"&&<div>
+        {allWars.length===0&&<div style={{...S.card(),color:C.muted}}>No war history yet.</div>}
+        {allWars.map(war=>{
+          const isAttacker=war.attacker_syndicate===player.syndicate;
+          const myScore=isAttacker?war.attacker_score:war.defender_score;
+          const theirScore=isAttacker?war.defender_score:war.attacker_score;
+          const won=myScore>theirScore;
+          const enemy=isAttacker?war.defender_syndicate:war.attacker_syndicate;
+          return(
+            <div key={war.id} style={S.card({borderColor:won?C.green+"33":C.red+"33"})}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <div>
+                  <div style={{color:won?C.green:C.red,fontWeight:700,fontSize:12}}>{won?"🏆 VICTORY":"💀 DEFEAT"} vs {enemy}</div>
+                  <div style={{color:C.muted,fontSize:10,marginTop:2}}>{myScore} — {theirScore} · {war.status}</div>
+                </div>
+                <div style={{color:C.muted,fontSize:9}}>{new Date(war.created_at).toLocaleDateString()}</div>
+              </div>
+            </div>
+          );
+        })}
+      </div>}
+    </div>}
+  </div>);
+}
+
 const NAV=[
   {id:"profile",     icon:"👤", label:"PROFILE"},
   {id:"crimes",      icon:"🔪", label:"CRIMES"},
@@ -2943,12 +3210,27 @@ const NAV=[
   {id:"jail",        icon:"🔒", label:"JAIL"},
   {id:"travel",      icon:"🌍", label:"TRAVEL"},
   {id:"chat",        icon:"💬", label:"CHAT"},
+  {id:"worldmap",    icon:"🗺", label:"WORLD"},
+  {id:"wars",        icon:"⚔",  label:"WARS"},
 ];
 
 function Game({initialPlayer,onLogout}) {
   const [player,setPlayer]=useState(initialPlayer);
   const isDark = useTheme();
   const onlineUsers = usePresence(player);
+
+  // Notify when attacked by another player online
+  useAttackEvents(player.username, (atk)=>{
+    notify(`⚔ ${atk.attacker_name} attacked you! -${atk.damage} HP`);
+    setPlayer(p=>addNotif({...p,health:Math.max(1,p.health-atk.damage)},"combat",`Attacked by ${atk.attacker_name} for ${atk.damage} dmg`));
+  });
+
+  function handleAttackFromMap(targetUser){
+    // Switch to combat page with this target pre-loaded
+    setPvpInitTarget(targetUser);
+    setPage("combat");
+    notify(`⚔ Targeting ${targetUser.name}...`);
+  }
   const [page,setPage]=useState("profile");
   const [toast,setToast]=useState(null);
   const [showDaily,setShowDaily]=useState(!initialPlayer.loginRewardClaimed);
@@ -3256,6 +3538,8 @@ function Game({initialPlayer,onLogout}) {
         {page==="jail"       &&<JailPage       player={player} onBail={handleBail} onBreakout={handleBreakout}/>}
         {page==="travel"     &&<TravelPage     player={player} onTravel={handleTravel} onArrive={handleArrive} onCityCrime={handleCityCrime}/>}
         {page==="chat"       &&<ChatPage       player={player} onlineUsers={onlineUsers}/>}
+        {page==="worldmap"   &&<WorldMapPage   player={player} onlineUsers={onlineUsers} onAttackPlayer={handleAttackFromMap}/>}
+        {page==="wars"       &&<SyndicateWarsPage player={player} onlineUsers={onlineUsers} notify={notify}/>}
       </div>
     </div>
   );
@@ -3285,3 +3569,4 @@ export default function App() {
   return<Game initialPlayer={player} onLogout={()=>{localStorage.removeItem("sd_session");setPlayer(null);}}/>;
 }
 // 
+             
