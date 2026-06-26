@@ -6,12 +6,12 @@ import { useState, useEffect, useCallback, useRef } from "react";
 // GAME CONSTANTS & FORMULAS
 // ============================================================
 const CRIMES = [
-  { id: "pickpocket",  name: "Pickpocket",   baseChance: 70, baseReward: 200,   nerve: 3,  xp: 10,  difficulty: 5,  desc: "Lift wallets from distracted marks" },
-  { id: "shoplifting", name: "Shoplifting",  baseChance: 65, baseReward: 400,   nerve: 5,  xp: 20,  difficulty: 10, desc: "Five-finger discount at the mall" },
-  { id: "mugging",     name: "Mugging",      baseChance: 55, baseReward: 700,   nerve: 8,  xp: 35,  difficulty: 18, desc: "Strong-arm a civilian for cash" },
-  { id: "carjacking",  name: "Car Theft",    baseChance: 50, baseReward: 1000,  nerve: 12, xp: 60,  difficulty: 20, desc: "Boost a ride from the parking garage" },
-  { id: "robbery",     name: "Armed Robbery",baseChance: 40, baseReward: 2500,  nerve: 18, xp: 100, difficulty: 30, desc: "Hit a convenience store at gunpoint" },
-  { id: "heist",       name: "Bank Heist",   baseChance: 25, baseReward: 8000,  nerve: 30, xp: 250, difficulty: 50, desc: "Crack a downtown vault with the crew" },
+  { id: "pickpocket",  name: "Pickpocket",   baseChance: 75, baseReward: 200,   nerve: 3,  xp: 40,  difficulty: 3,  desc: "Lift wallets from distracted marks" },
+  { id: "shoplifting", name: "Shoplifting",  baseChance: 70, baseReward: 400,   nerve: 5,  xp: 80,  difficulty: 7,  desc: "Five-finger discount at the mall" },
+  { id: "mugging",     name: "Mugging",      baseChance: 60, baseReward: 700,   nerve: 8,  xp: 150, difficulty: 12, desc: "Strong-arm a civilian for cash" },
+  { id: "carjacking",  name: "Car Theft",    baseChance: 55, baseReward: 1000,  nerve: 12, xp: 280, difficulty: 15, desc: "Boost a ride from the parking garage" },
+  { id: "robbery",     name: "Armed Robbery",baseChance: 45, baseReward: 2500,  nerve: 18, xp: 500, difficulty: 20, desc: "Hit a convenience store at gunpoint" },
+  { id: "heist",       name: "Bank Heist",   baseChance: 35, baseReward: 8000,  nerve: 30, xp: 1200,difficulty: 30, desc: "Crack a downtown vault with the crew" },
 ];
 
 const ITEMS = [
@@ -51,7 +51,8 @@ const DAILY_REWARDS = {
   7: { cash:5000,  label:"$5,000 + Rare Item", itemId:"scanner" },
 };
 
-const XP_FOR_LEVEL = (lvl) => Math.floor(100 * Math.pow(lvl, 1.5));
+const MAX_LEVEL = 100;
+const XP_FOR_LEVEL = (lvl) => Math.floor(80 * Math.pow(lvl, 1.3));
 const MAX_ENERGY = 100, MAX_NERVE = 50, MAX_HEALTH = 100;
 const SYNDICATE_COST = 100000000;
 const ADMIN_USER = "admin", ADMIN_PASS = "ShadowAdmin@2024";
@@ -460,7 +461,7 @@ function AuthPage({onLogin}) {
 // PROFILE PAGE
 // ============================================================
 function ProfilePage({player,onStatUp}) {
-  const xpN=XP_FOR_LEVEL(player.level+1);
+  const xpN=player.level>=MAX_LEVEL?1:XP_FOR_LEVEL(player.level+1);
   const wpn=ITEMS.find(i=>i.id===player.equippedWeapon);
   const arm=ITEMS.find(i=>i.id===player.equippedArmor);
   const wr=player.wins+player.losses>0?((player.wins/(player.wins+player.losses))*100).toFixed(0):"—";
@@ -539,7 +540,7 @@ function CrimesPage({player,onCrime}) {
       onCrime({success:true,nerveCost:crime.nerve,cash:reward,xp:crime.xp,rep:1,crimeName:crime.name});
       setLog(l=>[{t:`✅ ${crime.name} — +$${reward.toLocaleString()} | +${crime.xp}xp | +1 REP`,g:true},...l.slice(0,29)]);
     } else {
-      onCrime({success:false,nerveCost:crime.nerve,cash:0,xp:Math.floor(crime.xp*0.1),rep:-1,crimeName:crime.name});
+      onCrime({success:false,nerveCost:crime.nerve,cash:0,xp:Math.floor(crime.xp*0.4),rep:-1,crimeName:crime.name});
       setLog(l=>[{t:`❌ BUSTED — ${crime.name} | -1 REP`,g:false},...l.slice(0,29)]);
     }
   }
@@ -3554,7 +3555,7 @@ function Game({initialPlayer,onLogout}) {
       }
       // XP & level
       let xp=u.xp+xpEarned, level=u.level;
-      while(xp>=XP_FOR_LEVEL(level+1)){xp-=XP_FOR_LEVEL(level+1);level++;}
+      while(xp>=XP_FOR_LEVEL(level+1)&&level<MAX_LEVEL){xp-=XP_FOR_LEVEL(level+1);level++;}
       u={...u,xp,level};
       const notifText=won
         ?`${cityId}: +$${cashEarned.toLocaleString()} +${xpEarned}xp${lootItem?` + ${lootItem.name}`:""}`
