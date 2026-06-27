@@ -99,6 +99,53 @@ function AnnouncementBanner() {
 }
 
 // ============================================================
+// SUPABASE PLAYER SYNC
+// ============================================================
+async function syncPlayerToSupabase(player) {
+  const sb = getSB();
+  if(!sb || !player?.username) return;
+  const row = {
+    username:    player.username,
+    name:        player.name,
+    level:       player.level||1,
+    xp:          player.xp||0,
+    cash:        player.cash||0,
+    reputation:  player.reputation||0,
+    wins:        player.wins||0,
+    losses:      player.losses||0,
+    syndicate:   player.syndicate||null,
+    current_city:player.currentCity||"hometown",
+    strength:    player.strength||10,
+    defense:     player.defense||10,
+    speed:       player.speed||10,
+    prestige_tier:player.prestigeTier||0,
+    last_seen:   new Date().toISOString(),
+  };
+  await sb.from("players").upsert(row, { onConflict:"username" });
+}
+
+async function searchPlayers(query) {
+  const sb = getSB();
+  if(!sb) return [];
+  const { data } = await sb.from("players")
+    .select("*")
+    .ilike("username", `%${query}%`)
+    .order("level", { ascending:false })
+    .limit(20);
+  return data||[];
+}
+
+async function getTopPlayers(limit=50) {
+  const sb = getSB();
+  if(!sb) return [];
+  const { data } = await sb.from("players")
+    .select("*")
+    .order("level", { ascending:false })
+    .limit(limit);
+  return data||[];
+}
+
+// ============================================================
 // AUTH PAGE
 // ============================================================
 function AuthPage({onLogin}) {
@@ -123,6 +170,7 @@ function AuthPage({onLogin}) {
       const updated={...player,loginStreak:streak,lastLoginDate:today,loginRewardClaimed:claimed};
       accs[form.username.toLowerCase()].player=updated;
       saveAccounts(accs);
+      syncPlayerToSupabase(updated).catch(()=>{});
       setBusy(false);
       onLogin(updated);
     } else {
@@ -131,12 +179,14 @@ function AuthPage({onLogin}) {
       if(form.password.length<4){setBusy(false);return setErr("Password: min 4 chars.");}
       const uname=form.username.toLowerCase().trim();
       const accs=getAccounts();
-      if(accs[uname]){setBusy(false);return setErr("Username taken.");}
+      const {data:existing}=await getSB().from("players").select("username").eq("username",uname).maybeSingle();
+      if(accs[uname]||existing){setBusy(false);return setErr("Username taken.");}
       const player=createPlayer(form.name.trim(),uname);
       const today=new Date().toDateString();
       player.loginStreak=1; player.lastLoginDate=today; player.loginRewardClaimed=false;
       accs[uname]={password:form.password,player};
       saveAccounts(accs);
+      syncPlayerToSupabase(player).catch(()=>{});
       setBusy(false);
       onLogin(player);
     }
@@ -238,6 +288,12 @@ function Game({initialPlayer,onLogout}) {
   const [player,setPlayer]=useState(initialPlayer);
   const isDark = useTheme();
   const onlineUsers = usePresence(player);
+
+  // Sync player to Supabase whenever key stats change
+  useEffect(()=>{
+    const t = setTimeout(()=>syncPlayerToSupabase(player).catch(()=>{}), 2000);
+    return ()=>clearTimeout(t);
+  },[player.level, player.cash, player.reputation, player.wins, player.losses, player.syndicate, player.currentCity]);
   const [page,setPage]=useState("profile");
   const [toast,setToast]=useState(null);
   const [showDaily,setShowDaily]=useState(!initialPlayer.loginRewardClaimed);
